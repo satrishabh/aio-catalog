@@ -1,0 +1,27 @@
+id: oauth2-proxy
+name: oauth2-proxy (SSO gate)
+category: Identity
+kind: managed
+phase: '4'
+description: Puts Keycloak login in front of tool UIs that have no login of their own (OpenCost, Goldilocks, Prometheus,
+  Alertmanager). One login for every tool.
+namespace: oauth2-proxy
+deployment: oauth2-proxy
+chartRepo: https://oauth2-proxy.github.io/manifests
+chart: oauth2-proxy
+releaseName: oauth2-proxy
+valuesPath: values/oauth2-proxy/values.yaml
+requires: []
+probes:
+- name: Ping
+  url: http://oauth2-proxy.oauth2-proxy.svc/ping
+  expect: OK
+license: MIT
+foundation: CNCF (sandbox)
+homepage: https://oauth2-proxy.github.io/oauth2-proxy
+accessHint: 'Needs Secret oauth2-proxy/oauth2-proxy (client-id, client-secret, cookie-secret) and the Traefik middleware
+  in extras/oauth2-proxy-traefik: see sso/README.md'
+version: 10.7.1
+previousVersion: 10.7.0
+siteValues:
+  sarvaikam: values/oauth2-proxy/site-sarvaikam.yaml

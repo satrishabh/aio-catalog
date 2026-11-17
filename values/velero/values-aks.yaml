@@ -1,0 +1,10 @@
+# AKS overrides for the "velero" connector (applied after values.yaml when CLOUD_PROVIDER=aks).
+# AKS uses Microsoft Entra Workload ID: the velero-server service account is federated with a user-assigned
+# managed identity that may write to one storage account (setup/velero-setup-azure.sh). No storage key or
+# client secret exists. The "velero-credentials" secret only holds subscription / resource group / cloud name.
+# The label makes the Workload ID webhook inject the federated token into the server and node-agent pods.
+podLabels:
+  azure.workload.identity/use: "true"
+nodeAgent:
+  podLabels:
+    azure.workload.identity/use: "true"

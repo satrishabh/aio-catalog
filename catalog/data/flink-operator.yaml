@@ -1,0 +1,9 @@
+id: flink-operator
+name: Apache Flink Kubernetes Operator
+category: Data
+kind: planned
+phase: '7'
+description: Stream processing jobs managed as Kubernetes resources.
+license: Apache-2.0
+foundation: Apache
+homepage: https://flink.apache.org

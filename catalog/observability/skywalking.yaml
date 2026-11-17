@@ -1,0 +1,10 @@
+id: skywalking
+name: Apache SkyWalking
+category: Observability
+kind: planned
+phase: '7'
+description: 'APM: service maps, traces and metrics for Java, Go, Node and more.'
+license: Apache-2.0
+foundation: Apache
+origin: China
+homepage: https://skywalking.apache.org

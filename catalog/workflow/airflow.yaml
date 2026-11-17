@@ -1,0 +1,16 @@
+id: airflow
+name: Apache Airflow
+category: Workflow
+kind: planned
+phase: '6'
+description: Data and batch workflows as Python DAGs.
+chartRepo: https://airflow.apache.org
+chart: airflow
+sso:
+  mode: oidc
+  clientId: aio-airflow
+license: Apache-2.0
+foundation: Apache
+homepage: https://airflow.apache.org
+version: 1.22.0
+previousVersion: 1.21.0

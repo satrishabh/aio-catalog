@@ -1,0 +1,14 @@
+id: higress
+name: Higress
+category: API gateway
+kind: planned
+phase: '7'
+description: Envoy-based AI and API gateway (Wasm plugins, LLM routing).
+chartRepo: https://higress.io/helm-charts
+chart: higress
+license: Apache-2.0
+foundation: Independent
+origin: China (Alibaba)
+homepage: https://higress.ai
+version: 2.2.5
+previousVersion: 2.2.4

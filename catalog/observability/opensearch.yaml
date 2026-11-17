@@ -1,0 +1,13 @@
+id: opensearch
+name: OpenSearch
+category: Observability
+kind: planned
+phase: '7'
+description: Search and log analytics (open-source fork of Elasticsearch, which is no longer OSI-only).
+chartRepo: https://opensearch-project.github.io/helm-charts
+chart: opensearch
+license: Apache-2.0
+foundation: Linux Foundation
+homepage: https://opensearch.org
+version: 3.9.0
+previousVersion: 3.8.0

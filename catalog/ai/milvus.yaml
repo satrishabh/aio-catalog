@@ -1,0 +1,14 @@
+id: milvus
+name: Milvus
+category: AI
+kind: planned
+phase: '6'
+description: 'Vector database: semantic search over code, docs and logs for the AIO assistant.'
+chartRepo: https://zilliztech.github.io/milvus-helm/
+chart: milvus
+license: Apache-2.0
+foundation: LF AI & Data
+origin: China (Zilliz)
+homepage: https://milvus.io
+version: 5.0.33
+previousVersion: 5.0.32

@@ -1,0 +1,10 @@
+id: argo-rollouts
+name: Argo Rollouts
+category: CI/CD
+kind: core
+namespace: argo-rollouts
+deployment: argo-rollouts
+description: Blue-green releases for prod.
+license: Apache-2.0
+foundation: CNCF (graduated)
+homepage: https://argoproj.github.io/rollouts

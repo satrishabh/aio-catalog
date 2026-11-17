@@ -1,0 +1,17 @@
+id: vllm
+name: vLLM production stack
+category: AI
+kind: planned
+phase: '7'
+clouds:
+- aks
+- gke
+- eks
+description: Serves open-weight LLMs on GPU nodes (needs a GPU node pool).
+chartRepo: https://vllm-project.github.io/production-stack
+chart: vllm-stack
+license: Apache-2.0
+foundation: Linux Foundation (PyTorch)
+homepage: https://docs.vllm.ai
+version: 0.1.13
+previousVersion: 0.1.12

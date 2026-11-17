@@ -1,0 +1,23 @@
+id: trivy-operator
+name: Trivy Operator
+category: Security
+kind: managed
+phase: '2'
+description: Rescans what is running for new CVEs, misconfigurations and exposed secrets; reports expire after 24h
+  so every workload is rescanned daily. Complements the Trivy step in CI, which only sees images at build time.
+namespace: trivy-system
+deployment: trivy-operator
+chartRepo: https://aquasecurity.github.io/helm-charts/
+chart: trivy-operator
+version: 0.38.1
+previousVersion: 0.37.0
+releaseName: trivy-operator
+valuesPath: values/trivy-operator/values.yaml
+accessHint: kubectl get vulnerabilityreports -n dev -o wide (also -n staging, -n prod; configauditreports for misconfigurations)
+probes:
+- name: Operator metrics
+  url: http://trivy-operator.trivy-system.svc:8080/metrics
+  expect: trivy_
+license: Apache-2.0
+foundation: Independent (Aqua Security)
+homepage: https://aquasecurity.github.io/trivy-operator

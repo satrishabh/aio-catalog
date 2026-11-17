@@ -1,0 +1,20 @@
+# Site overrides for the sarvaikam.com installation (CONNECTORS_SITE=sarvaikam).
+# Tool UIs live under *.tools.sarvaikam.com; the login callback is on auth.tools.sarvaikam.com.
+# DNS: a wildcard A record *.tools.sarvaikam.com -> the Traefik public IP (52.140.55.184).
+extraArgs:
+  oidc-issuer-url: https://profile.sarvaikam.com/realms/aio
+  redirect-url: https://auth.tools.sarvaikam.com/oauth2/callback
+  cookie-domain: .tools.sarvaikam.com
+  whitelist-domain: .tools.sarvaikam.com
+
+ingress:
+  enabled: true
+  className: aio-azure
+  hosts: [auth.tools.sarvaikam.com]
+  path: /oauth2
+  pathType: Prefix
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-azure
+  tls:
+    - secretName: auth-tools-tls
+      hosts: [auth.tools.sarvaikam.com]

@@ -1,0 +1,30 @@
+{
+  "clientId": "aio-superset",
+  "name": "Apache Superset (AIO managed)",
+  "protocol": "openid-connect",
+  "publicClient": false,
+  "standardFlowEnabled": true,
+  "directAccessGrantsEnabled": false,
+  "implicitFlowEnabled": false,
+  "serviceAccountsEnabled": false,
+  "redirectUris": [
+    "https://superset.tools.sarvaikam.com/oauth-authorized/keycloak"
+  ],
+  "webOrigins": [
+    "https://superset.tools.sarvaikam.com"
+  ],
+  "attributes": {
+    "pkce.code.challenge.method": "S256",
+    "post.logout.redirect.uris": "https://superset.tools.sarvaikam.com/*"
+  },
+  "defaultClientScopes": [
+    "openid",
+    "email",
+    "profile",
+    "roles"
+  ],
+  "x-aio-roles": [
+    "aio-admin",
+    "aio-business"
+  ]
+}

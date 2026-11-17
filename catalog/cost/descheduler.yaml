@@ -1,0 +1,19 @@
+id: descheduler
+name: Descheduler
+category: Cost
+kind: managed
+phase: '3'
+description: Every 30 minutes, moves pods off under-used nodes so the node autoscaler can remove them, and clears
+  duplicate and crash-looping pods. Saves money only on an autoscaling node pool.
+namespace: descheduler
+deployment: descheduler
+chartRepo: https://kubernetes-sigs.github.io/descheduler/
+chart: descheduler
+version: 0.37.0
+previousVersion: 0.36.0
+releaseName: descheduler
+valuesPath: values/descheduler/values.yaml
+accessHint: kubectl -n descheduler logs deploy/descheduler
+license: Apache-2.0
+foundation: Kubernetes
+homepage: https://sigs.k8s.io/descheduler

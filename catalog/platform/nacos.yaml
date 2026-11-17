@@ -1,0 +1,10 @@
+id: nacos
+name: Nacos
+category: Platform
+kind: planned
+phase: '7'
+description: Service discovery and dynamic configuration.
+license: Apache-2.0
+foundation: Independent
+origin: China (Alibaba)
+homepage: https://nacos.io

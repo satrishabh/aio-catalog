@@ -1,0 +1,15 @@
+id: loki
+name: Grafana Loki
+category: Observability
+kind: planned
+phase: '5'
+description: Log storage queried from Grafana; stores logs in Azure Blob / S3 / GCS.
+chartRepo: https://grafana.github.io/helm-charts
+chart: loki
+requires:
+- prometheus
+license: AGPL-3.0
+foundation: Independent (Grafana Labs)
+homepage: https://grafana.com/oss/loki
+version: 7.5.0
+previousVersion: 7.3.0

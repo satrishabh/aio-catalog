@@ -1,0 +1,14 @@
+id: dragonfly
+name: Dragonfly
+category: Cost
+kind: planned
+phase: '6'
+description: 'P2P image and file distribution: faster pulls, less registry egress.'
+chartRepo: https://dragonflyoss.github.io/helm-charts/
+chart: dragonfly
+license: Apache-2.0
+foundation: CNCF (graduated)
+origin: China (Alibaba / Ant Group)
+homepage: https://d7y.io
+version: 1.8.7
+previousVersion: 1.8.6

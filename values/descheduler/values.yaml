@@ -1,0 +1,45 @@
+# descheduler values for the "descheduler" connector (chart 0.37.0; rollback target 0.36.0).
+# Installed by the AIO portal through Argo CD (app connector-descheduler, namespace descheduler).
+# Cost role: evicts pods from under-used nodes so the cluster autoscaler can remove those nodes. This only saves
+# money when the node pool autoscales (GKE: autoscaling profile "optimize-utilization"; EKS/AKS: Karpenter or the
+# cluster autoscaler). On a fixed-size pool it only tidies up duplicates and crash-looping pods.
+# Evictions respect PodDisruptionBudgets; pods without a controller, DaemonSet pods and pods with local storage
+# are never evicted.
+
+kind: Deployment                      # long-running, so Test can check it; runs the policy every 30 minutes
+deschedulingInterval: 30m
+priorityClassName: ""                 # system-cluster-critical is limited to kube-system on some clouds
+
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits: { memory: 256Mi }
+
+deschedulerPolicy:
+  maxNoOfPodsToEvictPerNode: 5
+  maxNoOfPodsToEvictPerNamespace: 5
+  profiles:
+    - name: aio
+      pluginConfig:
+        - name: DefaultEvictor
+          args:
+            nodeFit: true             # only evict when the pod fits on another node
+        - name: RemoveDuplicates
+          args:
+            namespaces: { include: [dev, staging, prod] }
+        - name: RemovePodsHavingTooManyRestarts
+          args:
+            podRestartThreshold: 100
+            includingInitContainers: true
+            namespaces: { include: [dev, staging] }
+        - name: HighNodeUtilization
+          args:
+            # A node below these percentages of requested capacity is drained so the autoscaler can remove it
+            thresholds: { cpu: 30, memory: 30, pods: 30 }
+            evictableNamespaces:
+              exclude: [kube-system, argocd, aio-platform, ci, tekton-pipelines, tekton-chains, kyverno,
+                        cert-manager, ingress-nginx, monitoring, velero]
+      plugins:
+        balance:
+          enabled: [RemoveDuplicates, HighNodeUtilization]
+        deschedule:
+          enabled: [RemovePodsHavingTooManyRestarts]

@@ -1,0 +1,10 @@
+id: kyverno
+name: Kyverno
+category: Supply chain
+kind: core
+namespace: kyverno
+deployment: kyverno-admission-controller
+description: Verifies image signatures when pods start.
+license: Apache-2.0
+foundation: CNCF (incubating)
+homepage: https://kyverno.io

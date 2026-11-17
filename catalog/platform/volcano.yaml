@@ -1,0 +1,14 @@
+id: volcano
+name: Volcano
+category: Platform
+kind: planned
+phase: '7'
+description: Batch and AI job scheduling (gang scheduling, queues).
+chartRepo: https://volcano-sh.github.io/helm-charts
+chart: volcano
+license: Apache-2.0
+foundation: CNCF (incubating)
+origin: China (Huawei)
+homepage: https://volcano.sh
+version: 1.16.0
+previousVersion: 1.15.3

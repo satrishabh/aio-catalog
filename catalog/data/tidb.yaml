@@ -1,0 +1,10 @@
+id: tidb
+name: TiDB Operator
+category: Data
+kind: planned
+phase: '7'
+description: Distributed MySQL-compatible database.
+license: Apache-2.0
+foundation: Independent (PingCAP)
+origin: China (PingCAP)
+homepage: https://docs.pingcap.com/tidb-in-kubernetes

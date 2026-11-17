@@ -1,0 +1,16 @@
+id: gitea
+name: Gitea
+category: Developer
+kind: planned
+phase: '7'
+description: Self-hosted Git service, for teams that cannot use GitHub.
+chartRepo: https://dl.gitea.com/charts/
+chart: gitea
+sso:
+  mode: oidc
+  clientId: aio-gitea
+license: MIT
+foundation: Independent
+homepage: https://about.gitea.com
+version: 12.7.0
+previousVersion: 12.6.0

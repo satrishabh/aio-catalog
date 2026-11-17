@@ -1,0 +1,10 @@
+id: shardingsphere
+name: Apache ShardingSphere
+category: Data
+kind: planned
+phase: '7'
+description: Database sharding, read/write splitting and encryption proxy.
+license: Apache-2.0
+foundation: Apache
+origin: China (JD.com)
+homepage: https://shardingsphere.apache.org

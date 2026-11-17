@@ -1,0 +1,10 @@
+id: cert-manager
+name: cert-manager
+category: Networking
+kind: core
+namespace: cert-manager
+deployment: cert-manager
+description: TLS certificates for app domains.
+license: Apache-2.0
+foundation: CNCF (graduated)
+homepage: https://cert-manager.io

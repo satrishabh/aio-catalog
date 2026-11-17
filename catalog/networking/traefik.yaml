@@ -1,0 +1,12 @@
+id: traefik
+name: Traefik
+category: Networking
+kind: core
+namespace: aio-ingress
+deployment: aio-azure-ingress-traefik
+clouds:
+- aks
+description: HTTP routing into the cluster on AKS (IngressClass aio-azure, static public IP).
+license: MIT
+foundation: Independent (Traefik Labs)
+homepage: https://traefik.io

@@ -1,0 +1,13 @@
+id: crossplane
+name: Crossplane
+category: Platform
+kind: planned
+phase: '6'
+description: Cloud resources (databases, buckets) as Kubernetes resources, on any cloud.
+chartRepo: https://charts.crossplane.io/stable
+chart: crossplane
+license: Apache-2.0
+foundation: CNCF (graduated)
+homepage: https://crossplane.io
+version: 2.4.3
+previousVersion: 2.4.2

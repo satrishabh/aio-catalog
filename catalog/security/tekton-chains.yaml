@@ -1,0 +1,10 @@
+id: tekton-chains
+name: Tekton Chains
+category: Supply chain
+kind: core
+namespace: tekton-chains
+deployment: tekton-chains-controller
+description: Signs images and attaches SLSA provenance.
+license: Apache-2.0
+foundation: CD Foundation
+homepage: https://tekton.dev/docs/chains

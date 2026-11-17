@@ -1,0 +1,13 @@
+id: strimzi
+name: Apache Kafka (Strimzi)
+category: Messaging
+kind: planned
+phase: '6'
+description: Apache Kafka clusters, topics and users as Kubernetes resources.
+chartRepo: https://strimzi.io/charts/
+chart: strimzi-kafka-operator
+license: Apache-2.0
+foundation: CNCF (incubating) / Apache Kafka
+homepage: https://strimzi.io
+version: 1.3.0
+previousVersion: 1.2.0

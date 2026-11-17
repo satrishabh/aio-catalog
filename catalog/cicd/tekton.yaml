@@ -1,0 +1,10 @@
+id: tekton
+name: Tekton Pipelines
+category: CI/CD
+kind: core
+namespace: tekton-pipelines
+deployment: tekton-pipelines-controller
+description: 'Runs CI pipelines: clone, test, build, scan.'
+license: Apache-2.0
+foundation: CD Foundation
+homepage: https://tekton.dev

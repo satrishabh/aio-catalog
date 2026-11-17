@@ -1,0 +1,39 @@
+id: prometheus
+name: Prometheus + Grafana
+category: Observability
+kind: managed
+phase: '1'
+description: Metrics, dashboards and alerts (kube-prometheus-stack). Needed by OpenCost, Trivy Operator metrics,
+  KEDA Prometheus triggers and Istio-based autoscaling.
+namespace: monitoring
+chartRepo: https://prometheus-community.github.io/helm-charts
+chart: kube-prometheus-stack
+version: 92.17.1
+previousVersion: 92.16.2
+releaseName: kps
+valuesPath: values/kube-prometheus-stack/values.yaml
+cloudValues:
+  aks: values/kube-prometheus-stack/values-aks.yaml
+accessHint: 'kubectl -n monitoring port-forward svc/kps-grafana 3000:80 (user admin; password: kubectl -n monitoring
+  get secret kps-grafana -o jsonpath=''{.data.admin-password}'' | base64 -d)'
+probes:
+- name: Prometheus query
+  url: http://kps-prometheus.monitoring.svc:9090/api/v1/query?query=up
+  expect: '"status":"success"'
+- name: Prometheus ready
+  url: http://kps-prometheus.monitoring.svc:9090/-/ready
+  expect: Ready
+- name: Alertmanager
+  url: http://kps-alertmanager.monitoring.svc:9093/-/healthy
+  expect: OK
+- name: Grafana
+  url: http://kps-grafana.monitoring.svc/api/health
+  expect: '"database"'
+license: 'Apache-2.0 (Grafana: AGPL-3.0)'
+foundation: CNCF (graduated)
+homepage: https://prometheus.io
+sso:
+  mode: oidc
+  clientId: aio-grafana
+siteValues:
+  sarvaikam: values/kube-prometheus-stack/site-sarvaikam.yaml

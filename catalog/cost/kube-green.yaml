@@ -1,0 +1,22 @@
+id: kube-green
+name: kube-green
+category: Cost
+kind: managed
+phase: '2'
+description: Puts dev and staging to sleep 20:00-08:00 IST on weekdays and all weekend, and wakes them on schedule.
+  Prod is never touched. Needs the Argo CD sync windows in extras/kube-green-apps-sync-windows.yaml.
+requires:
+- cert-manager
+namespace: kube-green
+deployment: kube-green-controller-manager
+chartRepo: https://kube-green.github.io/helm-charts/
+chart: kube-green
+version: 0.7.1
+previousVersion: 0.7.0
+releaseName: kube-green
+valuesPath: values/kube-green/values.yaml
+extrasPath: extras/kube-green-sleepinfo
+accessHint: kubectl get sleepinfo -n dev,staging (and kubectl get secret -n dev -l app.kubernetes.io/managed-by=kube-green)
+license: MIT
+foundation: Independent
+homepage: https://kube-green.dev

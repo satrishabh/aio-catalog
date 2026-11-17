@@ -1,0 +1,16 @@
+# Traefik middleware that sends every request through oauth2-proxy (Keycloak login).
+# Applied once by an admin, not by the connectors project (it lives in the ingress namespace):
+#   kubectl apply -f extras/oauth2-proxy-traefik/middleware.yaml
+# Use it on a tool's Ingress:
+#   traefik.ingress.kubernetes.io/router.middlewares: aio-ingress-sso@kubernetescrd
+# oauth2-proxy answers 202 for a signed-in user (request continues) and 302 to Keycloak otherwise.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: sso
+  namespace: aio-ingress
+spec:
+  forwardAuth:
+    address: http://oauth2-proxy.oauth2-proxy.svc/
+    trustForwardHeader: true
+    authResponseHeaders: [X-Auth-Request-User, X-Auth-Request-Email]

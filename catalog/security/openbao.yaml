@@ -1,0 +1,13 @@
+id: openbao
+name: OpenBao
+category: Security
+kind: planned
+phase: '6'
+description: Secrets manager (open-source fork of Vault, which is no longer OSI-licensed).
+chartRepo: https://openbao.github.io/openbao-helm
+chart: openbao
+license: MPL-2.0
+foundation: Linux Foundation (OpenSSF)
+homepage: https://openbao.org
+version: 0.30.6
+previousVersion: 0.30.5

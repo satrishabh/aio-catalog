@@ -1,0 +1,25 @@
+# oauth2-proxy values for the "oauth2-proxy" connector (the SSO gate for tool UIs without their own login).
+# Install-specific settings (issuer, domains, ingress) are in site-<site>.yaml, selected by the platform's
+# CONNECTORS_SITE. Credentials come from Secret oauth2-proxy/oauth2-proxy (keys client-id, client-secret,
+# cookie-secret), created by an admin: see sso/README.md. Nothing secret is stored in Git.
+config:
+  existingSecret: oauth2-proxy
+  configFile: |-
+    email_domains = [ "*" ]
+    upstreams = [ "static://202" ]
+
+extraArgs:
+  provider: keycloak-oidc
+  code-challenge-method: S256
+  scope: openid email profile
+  skip-provider-button: true
+  reverse-proxy: true            # trust X-Forwarded-* from Traefik to rebuild the original URL
+  set-xauthrequest: true         # X-Auth-Request-User / -Email for the tool behind the gate
+  cookie-secure: true
+  cookie-samesite: lax
+  cookie-expire: 12h
+  allowed-role: aio-tools-sso:aio-admin   # client role aio-admin of client aio-tools-sso (sso/keycloak)
+
+resources:
+  requests: { cpu: 10m, memory: 32Mi }
+  limits: { memory: 128Mi }

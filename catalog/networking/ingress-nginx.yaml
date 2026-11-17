@@ -1,0 +1,15 @@
+id: ingress-nginx
+name: ingress-nginx
+category: Networking
+kind: core
+namespace: ingress-nginx
+deployment: ingress-nginx-controller
+clouds:
+- gke
+- eks
+- oke
+- onprem
+description: HTTP routing into the cluster.
+license: Apache-2.0
+foundation: Kubernetes
+homepage: https://kubernetes.github.io/ingress-nginx

@@ -1,0 +1,28 @@
+id: velero
+name: Velero
+category: Reliability
+kind: managed
+phase: '3'
+description: 'Daily backup at 03:30 IST, kept 14 days: every namespace''s objects (including the Chains signing
+  key and Argo CD) and volume data (including the nightly Postgres dumps) to Azure Blob, GCS, S3 or MinIO. Needs
+  storage first: see the setup script.'
+namespace: velero
+deployment: velero
+chartRepo: https://vmware-tanzu.github.io/helm-charts
+chart: velero
+version: 12.2.3
+previousVersion: 12.2.2
+releaseName: velero
+valuesPath: values/velero/values.yaml
+cloudValues:
+  aks: values/velero/values-aks.yaml
+  gke: values/velero/values-gke.yaml
+accessHint: 'Setup: bash setup/velero-setup-azure.sh (AKS) or setup/velero-setup-gcp.sh (GKE). Check: kubectl
+  -n velero get backupstoragelocation,schedule,backup'
+probes:
+- name: Velero metrics
+  url: http://velero.velero.svc:8085/metrics
+  expect: velero_
+license: Apache-2.0
+foundation: Independent (Broadcom)
+homepage: https://velero.io

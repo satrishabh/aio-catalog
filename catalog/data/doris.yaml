@@ -1,0 +1,10 @@
+id: doris
+name: Apache Doris
+category: Data
+kind: planned
+phase: '7'
+description: Real-time analytics database (MPP, MySQL protocol).
+license: Apache-2.0
+foundation: Apache
+origin: China (Baidu)
+homepage: https://doris.apache.org

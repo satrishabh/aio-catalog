@@ -1,0 +1,13 @@
+id: pulsar
+name: Apache Pulsar
+category: Messaging
+kind: planned
+phase: '7'
+description: Messaging and streaming with multi-tenancy and geo-replication.
+chartRepo: https://pulsar.apache.org/charts
+chart: pulsar
+license: Apache-2.0
+foundation: Apache
+homepage: https://pulsar.apache.org
+version: 4.8.0
+previousVersion: 4.7.0

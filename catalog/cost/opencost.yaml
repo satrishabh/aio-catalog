@@ -1,0 +1,30 @@
+id: opencost
+name: OpenCost
+category: Cost
+kind: managed
+phase: '2'
+description: Cost per namespace, project and environment from real usage and cloud list prices (CNCF; any cloud
+  or on-prem). Reads metrics from Prometheus.
+requires:
+- prometheus
+namespace: opencost
+deployment: opencost
+chartRepo: https://opencost.github.io/opencost-helm-chart
+chart: opencost
+version: 2.5.33
+previousVersion: 2.5.32
+releaseName: opencost
+valuesPath: values/opencost/values.yaml
+accessHint: kubectl -n opencost port-forward svc/opencost 9090:9090 (then open http://localhost:9090)
+probes:
+- name: Cost API
+  url: http://opencost.opencost.svc:9003/healthz
+  expect: ''
+- name: Allocation (24h by namespace)
+  url: http://opencost.opencost.svc:9003/allocation/compute?window=1d&aggregate=namespace
+  expect: '"code":200'
+license: Apache-2.0
+foundation: CNCF (incubating)
+homepage: https://opencost.io
+sso:
+  mode: proxy

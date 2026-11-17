@@ -1,0 +1,9 @@
+id: camel-k
+name: Apache Camel K
+category: Workflow
+kind: planned
+phase: '7'
+description: Low-code integrations (300+ connectors) running as serverless routes.
+license: Apache-2.0
+foundation: Apache
+homepage: https://camel.apache.org/camel-k

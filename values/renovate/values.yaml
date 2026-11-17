@@ -1,0 +1,36 @@
+# renovate values for the "renovate" connector (chart 46.405.0, Renovate 44.210.0; rollback target 46.404.0).
+# Installed by the AIO portal through Argo CD (app connector-renovate, namespace renovate).
+# Opens pull requests that update dependencies (packages, base images, Helm charts) in every repository the
+# token can see. Each repository gets an onboarding PR first and nothing changes until it is merged.
+#
+# Before the first run, create the token secret (never stored in Git):
+#   kubectl create namespace renovate
+#   kubectl -n renovate create secret generic renovate-env --from-literal=RENOVATE_TOKEN=<github token>
+# Use a fine-grained token limited to the repositories Renovate should manage (contents, pull requests,
+# issues, workflows: read/write).
+
+# Recurring job: weekly, Monday 05:00 IST, so update PRs are waiting at the start of the week
+cronjob:
+  schedule: "0 5 * * 1"
+  timeZone: Asia/Kolkata
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: "2"
+  failedJobsHistoryLimit: "2"
+  activeDeadlineSeconds: "3600"
+
+existingSecret: renovate-env          # provides RENOVATE_TOKEN
+
+renovate:
+  config: |
+    {
+      "platform": "github",
+      "autodiscover": true,
+      "onboarding": true,
+      "prHourlyLimit": 4,
+      "prConcurrentLimit": 10,
+      "dependencyDashboard": true
+    }
+
+resources:
+  requests: { cpu: 250m, memory: 512Mi }
+  limits: { memory: 2Gi }

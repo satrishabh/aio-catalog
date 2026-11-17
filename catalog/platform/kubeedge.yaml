@@ -1,0 +1,10 @@
+id: kubeedge
+name: KubeEdge
+category: Platform
+kind: planned
+phase: '7'
+description: Runs workloads on edge devices managed from the cluster.
+license: Apache-2.0
+foundation: CNCF (graduated)
+origin: China (Huawei)
+homepage: https://kubeedge.io

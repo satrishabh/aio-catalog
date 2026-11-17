@@ -1,0 +1,10 @@
+id: answer
+name: Apache Answer
+category: Developer
+kind: planned
+phase: '7'
+description: Q&A knowledge base for teams.
+license: Apache-2.0
+foundation: Apache
+origin: China (SegmentFault)
+homepage: https://answer.apache.org

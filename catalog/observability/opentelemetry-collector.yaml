@@ -1,0 +1,13 @@
+id: opentelemetry-collector
+name: OpenTelemetry Collector
+category: Observability
+kind: planned
+phase: '5'
+description: Vendor-neutral pipeline for traces, metrics and logs from apps.
+chartRepo: https://open-telemetry.github.io/opentelemetry-helm-charts
+chart: opentelemetry-collector
+license: Apache-2.0
+foundation: CNCF (incubating)
+homepage: https://opentelemetry.io
+version: 0.178.2
+previousVersion: 0.178.1

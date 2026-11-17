@@ -1,0 +1,10 @@
+id: karmada
+name: Karmada
+category: Platform
+kind: planned
+phase: '7'
+description: Multi-cluster, multi-cloud scheduling and failover.
+license: Apache-2.0
+foundation: CNCF (incubating)
+origin: China (Huawei)
+homepage: https://karmada.io

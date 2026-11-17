@@ -1,0 +1,18 @@
+# AKS overrides for the "prometheus" connector (applied after values.yaml when CLOUD_PROVIDER=aks).
+# The AKS cluster "creative" has 2 x Standard_B2as_v2 (2 vCPU, 8 GiB, about 5.65 GiB allocatable each, autoscaling
+# capped at 2) already running AIO, Postgres, Argo CD, Tekton and the apps, so Prometheus is trimmed: 3 days of
+# metrics, smaller memory request, smaller disk.
+# Uses the default StorageClass (managed-csi, Standard SSD).
+prometheus:
+  prometheusSpec:
+    retention: 3d
+    retentionSize: 4GB
+    resources:
+      requests: { cpu: 100m, memory: 512Mi }
+      limits: { memory: 1Gi }
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests: { storage: 5Gi }

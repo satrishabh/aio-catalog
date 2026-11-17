@@ -1,0 +1,14 @@
+id: koordinator
+name: Koordinator
+category: Cost
+kind: planned
+phase: '6'
+description: 'QoS-based colocation: runs batch work in the idle capacity of latency-sensitive apps.'
+chartRepo: https://koordinator-sh.github.io/charts/
+chart: koordinator
+license: Apache-2.0
+foundation: CNCF (sandbox)
+origin: China (Alibaba)
+homepage: https://koordinator.sh
+version: 1.8.0
+previousVersion: 1.7.0

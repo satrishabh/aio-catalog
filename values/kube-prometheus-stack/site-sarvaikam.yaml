@@ -1,0 +1,33 @@
+# Site overrides for sarvaikam.com: Grafana at https://grafana.tools.sarvaikam.com with Keycloak login (realm aio).
+# Secret monitoring/grafana-oidc (key client-secret) holds the Keycloak client secret of client aio-grafana.
+# Keycloak client roles map to Grafana roles: aio-admin -> Admin, aio-business -> Viewer; others cannot log in.
+grafana:
+  ingress:
+    enabled: true
+    ingressClassName: aio-azure
+    hosts: [grafana.tools.sarvaikam.com]
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-azure
+    tls:
+      - secretName: grafana-tools-tls
+        hosts: [grafana.tools.sarvaikam.com]
+  envValueFrom:
+    GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
+      secretKeyRef: { name: grafana-oidc, key: client-secret }
+  grafana.ini:
+    server:
+      root_url: https://grafana.tools.sarvaikam.com
+    auth:
+      disable_login_form: true
+    auth.generic_oauth:
+      enabled: true
+      name: AIO
+      allow_sign_up: true
+      client_id: aio-grafana
+      scopes: openid email profile roles
+      auth_url: https://profile.sarvaikam.com/realms/aio/protocol/openid-connect/auth
+      token_url: https://profile.sarvaikam.com/realms/aio/protocol/openid-connect/token
+      api_url: https://profile.sarvaikam.com/realms/aio/protocol/openid-connect/userinfo
+      use_pkce: true
+      role_attribute_path: "contains(resource_access.\"aio-grafana\".roles[*], 'aio-admin') && 'Admin' || contains(resource_access.\"aio-grafana\".roles[*], 'aio-business') && 'Viewer'"
+      role_attribute_strict: true

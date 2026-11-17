@@ -1,0 +1,16 @@
+id: appsmith
+name: Appsmith
+category: Developer
+kind: planned
+phase: '6'
+description: Low-code internal tools and admin panels on top of your databases and APIs.
+chartRepo: https://helm.appsmith.com
+chart: appsmith
+sso:
+  mode: oidc
+  clientId: aio-appsmith
+license: Apache-2.0
+foundation: Independent (Appsmith)
+homepage: https://www.appsmith.com
+version: 3.9.1
+previousVersion: 3.9.0

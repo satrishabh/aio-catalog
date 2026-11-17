@@ -1,0 +1,5 @@
+# GKE overrides for the "velero" connector (applied after values.yaml when CLOUD_PROVIDER=gke).
+# GKE uses Workload Identity: the velero-server Kubernetes service account is granted access to the bucket
+# directly (setup/velero-setup-gcp.sh), so there is no key file and no credentials secret.
+credentials:
+  useSecret: false

@@ -1,0 +1,13 @@
+id: falco
+name: Falco
+category: Security
+kind: planned
+phase: '6'
+description: Runtime threat detection from kernel events.
+chartRepo: https://falcosecurity.github.io/charts
+chart: falco
+license: Apache-2.0
+foundation: CNCF (graduated)
+homepage: https://falco.org
+version: 9.2.2
+previousVersion: 9.2.1

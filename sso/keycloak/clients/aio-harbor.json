@@ -1,0 +1,30 @@
+{
+  "clientId": "aio-harbor",
+  "name": "Harbor (AIO managed)",
+  "protocol": "openid-connect",
+  "publicClient": false,
+  "standardFlowEnabled": true,
+  "directAccessGrantsEnabled": false,
+  "implicitFlowEnabled": false,
+  "serviceAccountsEnabled": false,
+  "redirectUris": [
+    "https://harbor.tools.sarvaikam.com/c/oidc/callback"
+  ],
+  "webOrigins": [
+    "https://harbor.tools.sarvaikam.com"
+  ],
+  "attributes": {
+    "pkce.code.challenge.method": "S256",
+    "post.logout.redirect.uris": "https://harbor.tools.sarvaikam.com/*"
+  },
+  "defaultClientScopes": [
+    "openid",
+    "email",
+    "profile",
+    "roles"
+  ],
+  "x-aio-roles": [
+    "aio-admin",
+    "aio-business"
+  ]
+}

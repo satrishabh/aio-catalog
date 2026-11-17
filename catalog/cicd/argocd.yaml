@@ -1,0 +1,13 @@
+id: argocd
+name: Argo CD
+category: CI/CD
+kind: core
+namespace: argocd
+deployment: argocd-server
+description: GitOps delivery of every project and connector.
+license: Apache-2.0
+foundation: CNCF (graduated)
+homepage: https://argo-cd.readthedocs.io
+sso:
+  mode: oidc
+  clientId: aio-argocd

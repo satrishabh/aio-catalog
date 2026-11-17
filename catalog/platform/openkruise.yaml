@@ -1,0 +1,14 @@
+id: openkruise
+name: OpenKruise
+category: Platform
+kind: planned
+phase: '6'
+description: 'Advanced workloads: in-place updates, sidecar management, image pre-download.'
+chartRepo: https://openkruise.github.io/charts/
+chart: kruise
+license: Apache-2.0
+foundation: CNCF (incubating)
+origin: China (Alibaba)
+homepage: https://openkruise.io
+version: 1.9.2
+previousVersion: 1.9.1

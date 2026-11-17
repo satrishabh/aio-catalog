@@ -1,0 +1,13 @@
+id: cloudnative-pg
+name: CloudNativePG
+category: Data
+kind: planned
+phase: '5'
+description: 'Managed PostgreSQL for apps: HA, backups to Blob/S3, point-in-time recovery.'
+chartRepo: https://cloudnative-pg.github.io/charts
+chart: cloudnative-pg
+license: Apache-2.0
+foundation: CNCF (sandbox)
+homepage: https://cloudnative-pg.io
+version: 0.29.1
+previousVersion: 0.29.0

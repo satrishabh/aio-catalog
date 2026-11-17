@@ -1,0 +1,17 @@
+# keda values for the "keda" connector (chart 2.21.0; rollback target 2.20.2).
+# Installed by the AIO portal through Argo CD (app connector-keda, namespace keda). CNCF graduated; any cloud.
+# KEDA scales a workload from ScaledObjects (queue length, cron, Prometheus query, ...), including to zero.
+# Installing it changes nothing by itself: apps opt in with a ScaledObject.
+# Note: KEDA serves external.metrics.k8s.io. Only one provider can own that API, so do not also enable
+# external metrics in a Prometheus Adapter.
+
+resources:
+  operator:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
+  metricServer:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
+  webhooks:
+    requests: { cpu: 10m, memory: 64Mi }
+    limits: { memory: 256Mi }

@@ -1,0 +1,65 @@
+# velero values for the "velero" connector (chart 12.2.3, Velero 1.18; rollback target 12.2.2).
+# Installed by the AIO portal through Argo CD (app connector-velero, namespace velero).
+#
+# Cloud-agnostic: the plugins for GCS, S3 (AWS and any S3-compatible store such as MinIO) and Azure Blob are all
+# installed. The bucket, credentials and BackupStorageLocation are created per cloud by a setup script
+# (setup/velero-setup-azure.sh on AKS, setup/velero-setup-gcp.sh on GKE); per-cloud identity settings
+# are in values-<cloud>.yaml.
+# Volumes are copied with the node agent (Kopia file-system backup), which works on every cloud and on-prem,
+# instead of cloud disk snapshots.
+
+initContainers:
+  - name: velero-plugin-for-gcp
+    image: velero/velero-plugin-for-gcp:v1.14.4
+    imagePullPolicy: IfNotPresent
+    volumeMounts: [{ mountPath: /target, name: plugins }]
+  - name: velero-plugin-for-aws
+    image: velero/velero-plugin-for-aws:v1.14.4
+    imagePullPolicy: IfNotPresent
+    volumeMounts: [{ mountPath: /target, name: plugins }]
+  - name: velero-plugin-for-microsoft-azure
+    image: velero/velero-plugin-for-microsoft-azure:v1.14.4
+    imagePullPolicy: IfNotPresent
+    volumeMounts: [{ mountPath: /target, name: plugins }]
+
+credentials:
+  useSecret: true
+  existingSecret: velero-credentials  # key "cloud"; created by the setup script, never stored in Git
+
+configuration:
+  backupStorageLocation: []           # created by the setup script (name "default")
+  volumeSnapshotLocation: []
+  uploaderType: kopia
+  defaultBackupStorageLocation: default
+
+backupsEnabled: true
+snapshotsEnabled: false
+deployNodeAgent: true
+
+resources:
+  requests: { cpu: 100m, memory: 128Mi }
+  limits: { memory: 512Mi }
+
+nodeAgent:
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 1Gi }
+
+metrics:
+  enabled: true                       # :8085/metrics, used by the connector Test
+
+# Recurring job: daily at 03:30 IST (22:00 UTC), kept 14 days. Runs an hour after the 02:30 IST Postgres dump
+# (aio-validation/postgres-backup), so each night's dump is copied off the cluster the same night.
+schedules:
+  daily:
+    schedule: "0 22 * * *"
+    useOwnerReferencesInBackup: false
+    template:
+      ttl: 336h
+      storageLocation: default
+      # Everything except Kubernetes internals and data that is cheaper to rebuild than to store
+      # (Prometheus metrics, Trivy reports). Includes aio-platform, tekton-chains (the signing key),
+      # argocd, ci, the app namespaces and aio-validation (Postgres data and its nightly dumps).
+      excludedNamespaces: [kube-system, kube-public, kube-node-lease, monitoring, trivy-system, velero]
+      defaultVolumesToFsBackup: true
+      snapshotVolumes: false

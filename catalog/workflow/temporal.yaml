@@ -1,0 +1,9 @@
+id: temporal
+name: Temporal
+category: Workflow
+kind: planned
+phase: '7'
+description: Durable workflow execution for long-running business processes.
+license: MIT
+foundation: Independent (Temporal Technologies)
+homepage: https://temporal.io

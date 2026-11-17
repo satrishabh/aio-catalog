@@ -1,0 +1,16 @@
+id: backstage
+name: Backstage
+category: Developer
+kind: planned
+phase: '7'
+description: Developer portal and software catalog (complements AIO; AIO stays the delivery engine).
+chartRepo: https://backstage.github.io/charts
+chart: backstage
+sso:
+  mode: oidc
+  clientId: aio-backstage
+license: Apache-2.0
+foundation: CNCF (incubating)
+homepage: https://backstage.io
+version: 2.10.2
+previousVersion: 2.10.1

@@ -1,0 +1,15 @@
+id: jaeger
+name: Jaeger
+category: Observability
+kind: planned
+phase: '6'
+description: Distributed tracing UI and storage.
+chartRepo: https://jaegertracing.github.io/helm-charts
+chart: jaeger
+sso:
+  mode: proxy
+license: Apache-2.0
+foundation: CNCF (graduated)
+homepage: https://www.jaegertracing.io
+version: 4.16.1
+previousVersion: 4.16.0

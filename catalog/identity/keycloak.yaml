@@ -1,0 +1,14 @@
+id: keycloak
+name: Keycloak
+category: Identity
+kind: planned
+phase: '4'
+description: Single sign-on (OIDC/SAML). AIO already uses an external Keycloak (realm aio); this entry is for installs
+  without one.
+chartRepo: https://codecentric.github.io/helm-charts
+chart: keycloakx
+license: Apache-2.0
+foundation: CNCF (incubating)
+homepage: https://www.keycloak.org
+version: 7.4.0
+previousVersion: 7.3.2

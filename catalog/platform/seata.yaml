@@ -1,0 +1,10 @@
+id: seata
+name: Apache Seata
+category: Platform
+kind: planned
+phase: '7'
+description: Distributed transactions for microservices.
+license: Apache-2.0
+foundation: Apache
+origin: China (Alibaba)
+homepage: https://seata.apache.org

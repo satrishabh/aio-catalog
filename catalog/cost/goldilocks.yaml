@@ -1,0 +1,25 @@
+id: goldilocks
+name: Goldilocks + VPA
+category: Cost
+kind: managed
+phase: '2'
+description: 'Right-sizing: recommends CPU and memory requests for dev, staging and prod from real usage. VPA runs
+  in recommend-only mode, so nothing is resized automatically.'
+namespace: goldilocks
+deployment: goldilocks-controller
+chartRepo: https://charts.fairwinds.com/stable
+chart: goldilocks
+version: 11.2.0
+previousVersion: 11.1.1
+releaseName: goldilocks
+valuesPath: values/goldilocks/values.yaml
+accessHint: kubectl -n goldilocks port-forward svc/goldilocks-dashboard 8080:80 (then open http://localhost:8080)
+probes:
+- name: Dashboard
+  url: http://goldilocks-dashboard.goldilocks.svc/health
+  expect: ''
+license: Apache-2.0
+foundation: Independent (Fairwinds)
+homepage: https://goldilocks.docs.fairwinds.com
+sso:
+  mode: proxy

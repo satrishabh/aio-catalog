@@ -1,0 +1,17 @@
+id: harbor
+name: Harbor
+category: Security
+kind: planned
+phase: '5'
+description: Private container registry with Trivy scanning, signing, replication and OIDC login.
+chartRepo: https://helm.goharbor.io
+chart: harbor
+sso:
+  mode: oidc
+  clientId: aio-harbor
+license: Apache-2.0
+foundation: CNCF (graduated)
+origin: China (VMware China R&D)
+homepage: https://goharbor.io
+version: 1.19.4
+previousVersion: 1.19.2

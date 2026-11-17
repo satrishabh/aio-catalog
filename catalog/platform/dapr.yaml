@@ -1,0 +1,13 @@
+id: dapr
+name: Dapr
+category: Platform
+kind: planned
+phase: '7'
+description: 'Building blocks for microservices: pub/sub, state, workflows, secrets.'
+chartRepo: https://dapr.github.io/helm-charts/
+chart: dapr
+license: Apache-2.0
+foundation: CNCF (graduated)
+homepage: https://dapr.io
+version: 1.19.1
+previousVersion: 1.19.0

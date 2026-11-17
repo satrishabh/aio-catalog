@@ -1,0 +1,10 @@
+id: hertzbeat
+name: Apache HertzBeat
+category: Observability
+kind: planned
+phase: '7'
+description: Agentless monitoring and status pages.
+license: Apache-2.0
+foundation: Apache
+origin: China (Dromara)
+homepage: https://hertzbeat.apache.org

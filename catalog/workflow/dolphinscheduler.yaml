@@ -1,0 +1,10 @@
+id: dolphinscheduler
+name: Apache DolphinScheduler
+category: Workflow
+kind: planned
+phase: '7'
+description: Visual low-code workflow scheduler.
+license: Apache-2.0
+foundation: Apache
+origin: China
+homepage: https://dolphinscheduler.apache.org

@@ -1,0 +1,16 @@
+id: superset
+name: Apache Superset
+category: Data
+kind: planned
+phase: '6'
+description: BI dashboards and SQL exploration.
+chartRepo: https://apache.github.io/superset
+chart: superset
+sso:
+  mode: oidc
+  clientId: aio-superset
+license: Apache-2.0
+foundation: Apache
+homepage: https://superset.apache.org
+version: 0.22.8
+previousVersion: 0.22.7

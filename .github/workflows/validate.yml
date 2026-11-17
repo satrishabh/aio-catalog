@@ -1,0 +1,23 @@
+name: validate
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pyyaml==6.0.2
+      - uses: azure/setup-helm@v4
+        with: { version: v3.16.2 }
+      - name: Rules
+        run: python tools/validate.py
+      - name: Generated files are up to date
+        run: python tools/build.py --check
+      - name: Render every managed tool at both versions
+        run: python tools/validate.py --render

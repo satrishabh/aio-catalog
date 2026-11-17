@@ -1,0 +1,16 @@
+id: dependency-track
+name: OWASP Dependency-Track
+category: Security
+kind: planned
+phase: '6'
+description: Tracks the SBOMs AIO already produces and alerts on new CVEs per project.
+chartRepo: https://dependencytrack.github.io/helm-charts
+chart: dependency-track
+sso:
+  mode: oidc
+  clientId: aio-dependency-track
+license: Apache-2.0
+foundation: OWASP
+homepage: https://dependencytrack.org
+version: 2.9.0
+previousVersion: 2.8.0

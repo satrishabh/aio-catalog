@@ -1,0 +1,13 @@
+id: langfuse
+name: Langfuse
+category: AI
+kind: planned
+phase: '6'
+description: 'LLM observability: traces, cost and quality of the AIO assistant and app AI features.'
+chartRepo: https://langfuse.github.io/langfuse-k8s
+chart: langfuse
+license: MIT
+foundation: Independent
+homepage: https://langfuse.com
+version: 2.2.1
+previousVersion: 2.2.0

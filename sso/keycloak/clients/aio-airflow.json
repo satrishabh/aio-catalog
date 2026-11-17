@@ -1,0 +1,30 @@
+{
+  "clientId": "aio-airflow",
+  "name": "Apache Airflow (AIO managed)",
+  "protocol": "openid-connect",
+  "publicClient": false,
+  "standardFlowEnabled": true,
+  "directAccessGrantsEnabled": false,
+  "implicitFlowEnabled": false,
+  "serviceAccountsEnabled": false,
+  "redirectUris": [
+    "https://airflow.tools.sarvaikam.com/oauth-authorized/keycloak"
+  ],
+  "webOrigins": [
+    "https://airflow.tools.sarvaikam.com"
+  ],
+  "attributes": {
+    "pkce.code.challenge.method": "S256",
+    "post.logout.redirect.uris": "https://airflow.tools.sarvaikam.com/*"
+  },
+  "defaultClientScopes": [
+    "openid",
+    "email",
+    "profile",
+    "roles"
+  ],
+  "x-aio-roles": [
+    "aio-admin",
+    "aio-business"
+  ]
+}

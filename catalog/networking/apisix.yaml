@@ -1,0 +1,14 @@
+id: apisix
+name: Apache APISIX
+category: API gateway
+kind: planned
+phase: '6'
+description: 'API gateway: rate limits, auth plugins, canary routing.'
+chartRepo: https://charts.apiseven.com
+chart: apisix
+license: Apache-2.0
+foundation: Apache
+origin: China (API7)
+homepage: https://apisix.apache.org
+version: 2.18.2
+previousVersion: 2.18.1
