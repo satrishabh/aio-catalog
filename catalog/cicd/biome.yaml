@@ -1,0 +1,10 @@
+id: biome
+name: Biome (CI step)
+category: CI/CD
+kind: planned
+phase: '5'
+description: Fast linter and formatter for JavaScript, TypeScript, JSON and CSS. Runs as a step in the AIO CI pipeline
+  (biome ci), not as a service.
+license: MIT OR Apache-2.0
+foundation: Independent
+homepage: https://biomejs.dev

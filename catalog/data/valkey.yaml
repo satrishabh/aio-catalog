@@ -1,0 +1,14 @@
+id: valkey
+name: Valkey
+category: Data
+kind: planned
+phase: '5'
+description: 'In-memory key-value store (cache, queues, sessions): the open-source fork of Redis, which is no longer
+  OSI-licensed. Drop-in compatible with Redis clients.'
+chartRepo: https://valkey.io/valkey-helm
+chart: valkey
+license: BSD-3-Clause
+foundation: Linux Foundation
+homepage: https://valkey.io
+version: 0.12.1
+previousVersion: 0.12.0

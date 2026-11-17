@@ -1,0 +1,16 @@
+id: opennms
+name: OpenNMS Horizon
+category: Observability
+kind: planned
+phase: '7'
+description: 'Network and infrastructure monitoring (SNMP, flows, discovery, alarms). Heavy: Java, PostgreSQL and
+  optionally Kafka; plan a larger node pool before enabling.'
+chartRepo: https://opennms.github.io/helm-charts
+chart: horizon
+sso:
+  mode: proxy
+license: AGPL-3.0
+foundation: Independent (The OpenNMS Group)
+homepage: https://www.opennms.com
+version: 1.1.20
+previousVersion: 1.1.18

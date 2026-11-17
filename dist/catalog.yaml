@@ -417,6 +417,26 @@ connectors:
   homepage: https://higress.ai
   version: 2.2.5
   previousVersion: 2.2.4
+- id: biome
+  name: Biome (CI step)
+  category: CI/CD
+  kind: planned
+  phase: '5'
+  description: Fast linter and formatter for JavaScript, TypeScript, JSON and CSS. Runs as a step in the AIO CI
+    pipeline (biome ci), not as a service.
+  license: MIT OR Apache-2.0
+  foundation: Independent
+  homepage: https://biomejs.dev
+- id: podman
+  name: Podman / Buildah (CI step)
+  category: CI/CD
+  kind: planned
+  phase: '6'
+  description: Daemonless, rootless container builds. A possible third build strategy next to Kaniko and Buildpacks
+    in the CI pipeline, not a service.
+  license: Apache-2.0
+  foundation: Independent (Red Hat, containers project)
+  homepage: https://podman.io
 - id: dragonfly
   name: Dragonfly
   category: Cost
@@ -540,6 +560,20 @@ connectors:
   foundation: Independent (PingCAP)
   origin: China (PingCAP)
   homepage: https://docs.pingcap.com/tidb-in-kubernetes
+- id: valkey
+  name: Valkey
+  category: Data
+  kind: planned
+  phase: '5'
+  description: 'In-memory key-value store (cache, queues, sessions): the open-source fork of Redis, which is no
+    longer OSI-licensed. Drop-in compatible with Redis clients.'
+  chartRepo: https://valkey.io/valkey-helm
+  chart: valkey
+  license: BSD-3-Clause
+  foundation: Linux Foundation
+  homepage: https://valkey.io
+  version: 0.12.1
+  previousVersion: 0.12.0
 - id: answer
   name: Apache Answer
   category: Developer
@@ -598,6 +632,47 @@ connectors:
   homepage: https://about.gitea.com
   version: 12.7.0
   previousVersion: 12.6.0
+- id: jitsi-meet
+  name: Jitsi Meet
+  category: Developer
+  kind: planned
+  phase: '7'
+  description: 'Video meetings in the browser. Needs a public UDP port (10000) for media, which the shared HTTP
+    ingress cannot carry: a separate LoadBalancer Service is required.'
+  chartRepo: https://jitsi-contrib.github.io/jitsi-helm
+  chart: jitsi-meet
+  sso:
+    mode: proxy
+  license: Apache-2.0
+  foundation: Independent (8x8)
+  homepage: https://jitsi.org
+  version: 3.12.0
+  previousVersion: 3.11.1
+- id: mediawiki
+  name: MediaWiki
+  category: Developer
+  kind: planned
+  phase: '7'
+  description: Team wiki (the software behind Wikipedia). Keycloak login through the OpenID Connect extension; stores
+    pages in MariaDB/PostgreSQL.
+  sso:
+    mode: oidc
+    clientId: aio-mediawiki
+  license: GPL-2.0
+  foundation: Wikimedia Foundation
+  homepage: https://www.mediawiki.org
+- id: odoo
+  name: Odoo Community (incl. Point of Sale)
+  category: Developer
+  kind: planned
+  phase: '7'
+  description: 'ERP suite: Point of Sale, invoicing, inventory, CRM. Only Odoo Community (LGPL) is offered; Odoo
+    Enterprise modules are proprietary. Needs PostgreSQL (CloudNativePG).'
+  requires:
+  - cloudnative-pg
+  license: LGPL-3.0
+  foundation: Independent (Odoo S.A.)
+  homepage: https://www.odoo.com/page/community
 - id: sonarqube
   name: SonarQube Community Build
   category: Developer
@@ -691,6 +766,22 @@ connectors:
   homepage: https://grafana.com/oss/loki
   version: 7.5.0
   previousVersion: 7.3.0
+- id: opennms
+  name: OpenNMS Horizon
+  category: Observability
+  kind: planned
+  phase: '7'
+  description: 'Network and infrastructure monitoring (SNMP, flows, discovery, alarms). Heavy: Java, PostgreSQL
+    and optionally Kafka; plan a larger node pool before enabling.'
+  chartRepo: https://opennms.github.io/helm-charts
+  chart: horizon
+  sso:
+    mode: proxy
+  license: AGPL-3.0
+  foundation: Independent (The OpenNMS Group)
+  homepage: https://www.opennms.com
+  version: 1.1.20
+  previousVersion: 1.1.18
 - id: opensearch
   name: OpenSearch
   category: Observability

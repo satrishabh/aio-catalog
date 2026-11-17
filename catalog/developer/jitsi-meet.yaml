@@ -1,0 +1,16 @@
+id: jitsi-meet
+name: Jitsi Meet
+category: Developer
+kind: planned
+phase: '7'
+description: 'Video meetings in the browser. Needs a public UDP port (10000) for media, which the shared HTTP ingress
+  cannot carry: a separate LoadBalancer Service is required.'
+chartRepo: https://jitsi-contrib.github.io/jitsi-helm
+chart: jitsi-meet
+sso:
+  mode: proxy
+license: Apache-2.0
+foundation: Independent (8x8)
+homepage: https://jitsi.org
+version: 3.12.0
+previousVersion: 3.11.1

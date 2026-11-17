@@ -1,0 +1,13 @@
+id: mediawiki
+name: MediaWiki
+category: Developer
+kind: planned
+phase: '7'
+description: Team wiki (the software behind Wikipedia). Keycloak login through the OpenID Connect extension; stores
+  pages in MariaDB/PostgreSQL.
+sso:
+  mode: oidc
+  clientId: aio-mediawiki
+license: GPL-2.0
+foundation: Wikimedia Foundation
+homepage: https://www.mediawiki.org

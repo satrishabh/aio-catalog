@@ -1,0 +1,12 @@
+id: odoo
+name: Odoo Community (incl. Point of Sale)
+category: Developer
+kind: planned
+phase: '7'
+description: 'ERP suite: Point of Sale, invoicing, inventory, CRM. Only Odoo Community (LGPL) is offered; Odoo Enterprise
+  modules are proprietary. Needs PostgreSQL (CloudNativePG).'
+requires:
+- cloudnative-pg
+license: LGPL-3.0
+foundation: Independent (Odoo S.A.)
+homepage: https://www.odoo.com/page/community

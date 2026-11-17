@@ -28,3 +28,12 @@ Every tool in this catalog, whatever its origin, passes the same rules before it
 3. Probes that prove the tool works, not only that a pod runs.
 4. An SSO mode: `oidc` (own Keycloak client), `proxy` (oauth2-proxy gate) or none.
 5. A dry run on a real cluster, at both versions, before the first Enable.
+
+## Considered, not added
+
+| Tool | Why |
+| --- | --- |
+| OpenTodoList | A desktop and mobile to-do app that syncs with Nextcloud or WebDAV; there is no server to host. For hosted to-do lists, consider Vikunja (AGPL-3.0). |
+| OpenHPC | A bare-metal HPC software stack (provisioning, Slurm, MPI), not Kubernetes workloads. For batch and HPC jobs on Kubernetes use Volcano (catalog, planned). |
+| Flyspray | Bug tracker with almost no maintenance for years; fails the active-community rule. Use Gitea issues (catalog, planned). |
+| Odoo Enterprise | Proprietary modules; only Odoo Community is in the catalog. |
