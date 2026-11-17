@@ -25,9 +25,12 @@ controller:
 
 dashboard:
   replicaCount: 1
+  # The dashboard has no --include-namespaces (it crash-loops on it; found in the live AKS test). VPAs only exist
+  # where the controller creates them (dev, staging, prod), so show-all displays exactly those.
+  # enable-cost=false: no calls to Fairwinds Insights (an external SaaS).
   flags:
-    on-by-default: "true"
-    include-namespaces: "dev,staging,prod"
+    show-all: "true"
+    enable-cost: "false"
   resources:
     requests: { cpu: 10m, memory: 64Mi }
     limits: { memory: 128Mi }
