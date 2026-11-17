@@ -1,0 +1,18 @@
+id: gitlab-ce
+name: GitLab CE
+category: CI/CD
+kind: planned
+phase: '7'
+description: 'Git hosting, merge requests and CI/CD in one product. Heavy: the cloud-native chart needs roughly 4 vCPU and
+  16 GiB, more than the whole current AKS pool, so it needs the spot pool or its own node pool. For plain Git hosting
+  on a small cluster prefer Gitea; AIO already covers CI/CD with Tekton and Argo CD. Community Edition only (MIT);
+  Enterprise features are proprietary.'
+chartRepo: https://charts.gitlab.io
+chart: gitlab
+sso:
+  mode: oidc
+  clientId: aio-gitlab
+license: MIT
+foundation: Independent (GitLab Inc.)
+origin: United States
+homepage: https://about.gitlab.com/install/ce-or-ee/

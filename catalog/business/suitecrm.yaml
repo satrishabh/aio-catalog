@@ -1,0 +1,15 @@
+id: suitecrm
+name: SuiteCRM
+category: Business
+kind: planned
+phase: '7'
+description: 'Sales and customer management (leads, opportunities, cases, campaigns). There is no maintained official
+  Helm chart (the Bitnami chart is deprecated), so promotion needs our own chart under extras/ built on the official
+  image, plus MariaDB.'
+sso:
+  mode: oidc
+  clientId: aio-suitecrm
+license: AGPL-3.0
+foundation: Independent (SalesAgility)
+origin: United Kingdom
+homepage: https://suitecrm.com

@@ -1,6 +1,6 @@
 id: odoo
 name: Odoo Community (incl. Point of Sale)
-category: Developer
+category: Business
 kind: planned
 phase: '7'
 description: 'ERP suite: Point of Sale, invoicing, inventory, CRM. Only Odoo Community (LGPL) is offered; Odoo Enterprise

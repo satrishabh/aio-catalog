@@ -1,0 +1,17 @@
+id: erpnext
+name: ERPNext
+category: Business
+kind: planned
+phase: '7'
+description: 'ERP on the Frappe framework: accounting, HR and payroll, inventory, manufacturing, projects. Strong fit
+  for Indian businesses (GST reports built in). The Frappe chart brings its own MariaDB and Redis; it needs a
+  ReadWriteMany volume for sites, so plan the storage class before promotion.'
+chartRepo: https://helm.erpnext.com
+chart: erpnext
+sso:
+  mode: oidc
+  clientId: aio-erpnext
+license: GPL-3.0
+foundation: Independent (Frappe Technologies)
+origin: India
+homepage: https://erpnext.com

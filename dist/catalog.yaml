@@ -417,6 +417,50 @@ connectors:
   homepage: https://higress.ai
   version: 2.2.5
   previousVersion: 2.2.4
+- id: erpnext
+  name: ERPNext
+  category: Business
+  kind: planned
+  phase: '7'
+  description: 'ERP on the Frappe framework: accounting, HR and payroll, inventory, manufacturing, projects. Strong
+    fit for Indian businesses (GST reports built in). The Frappe chart brings its own MariaDB and Redis; it needs
+    a ReadWriteMany volume for sites, so plan the storage class before promotion.'
+  chartRepo: https://helm.erpnext.com
+  chart: erpnext
+  sso:
+    mode: oidc
+    clientId: aio-erpnext
+  license: GPL-3.0
+  foundation: Independent (Frappe Technologies)
+  origin: India
+  homepage: https://erpnext.com
+- id: odoo
+  name: Odoo Community (incl. Point of Sale)
+  category: Business
+  kind: planned
+  phase: '7'
+  description: 'ERP suite: Point of Sale, invoicing, inventory, CRM. Only Odoo Community (LGPL) is offered; Odoo
+    Enterprise modules are proprietary. Needs PostgreSQL (CloudNativePG).'
+  requires:
+  - cloudnative-pg
+  license: LGPL-3.0
+  foundation: Independent (Odoo S.A.)
+  homepage: https://www.odoo.com/page/community
+- id: suitecrm
+  name: SuiteCRM
+  category: Business
+  kind: planned
+  phase: '7'
+  description: Sales and customer management (leads, opportunities, cases, campaigns). There is no maintained official
+    Helm chart (the Bitnami chart is deprecated), so promotion needs our own chart under extras/ built on the official
+    image, plus MariaDB.
+  sso:
+    mode: oidc
+    clientId: aio-suitecrm
+  license: AGPL-3.0
+  foundation: Independent (SalesAgility)
+  origin: United Kingdom
+  homepage: https://suitecrm.com
 - id: biome
   name: Biome (CI step)
   category: CI/CD
@@ -427,6 +471,24 @@ connectors:
   license: MIT OR Apache-2.0
   foundation: Independent
   homepage: https://biomejs.dev
+- id: gitlab-ce
+  name: GitLab CE
+  category: CI/CD
+  kind: planned
+  phase: '7'
+  description: 'Git hosting, merge requests and CI/CD in one product. Heavy: the cloud-native chart needs roughly
+    4 vCPU and 16 GiB, more than the whole current AKS pool, so it needs the spot pool or its own node pool. For
+    plain Git hosting on a small cluster prefer Gitea; AIO already covers CI/CD with Tekton and Argo CD. Community
+    Edition only (MIT); Enterprise features are proprietary.'
+  chartRepo: https://charts.gitlab.io
+  chart: gitlab
+  sso:
+    mode: oidc
+    clientId: aio-gitlab
+  license: MIT
+  foundation: Independent (GitLab Inc.)
+  origin: United States
+  homepage: https://about.gitlab.com/install/ce-or-ee/
 - id: podman
   name: Podman / Buildah (CI step)
   category: CI/CD
@@ -661,18 +723,6 @@ connectors:
   license: GPL-2.0
   foundation: Wikimedia Foundation
   homepage: https://www.mediawiki.org
-- id: odoo
-  name: Odoo Community (incl. Point of Sale)
-  category: Developer
-  kind: planned
-  phase: '7'
-  description: 'ERP suite: Point of Sale, invoicing, inventory, CRM. Only Odoo Community (LGPL) is offered; Odoo
-    Enterprise modules are proprietary. Needs PostgreSQL (CloudNativePG).'
-  requires:
-  - cloudnative-pg
-  license: LGPL-3.0
-  foundation: Independent (Odoo S.A.)
-  homepage: https://www.odoo.com/page/community
 - id: sonarqube
   name: SonarQube Community Build
   category: Developer
