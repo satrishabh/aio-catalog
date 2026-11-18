@@ -1,0 +1,28 @@
+# Traefik overlay: edge flood guard for every site. Optional. Pass it AFTER the ingress base and public files:
+#   helm upgrade aio-azure-ingress traefik --repo https://traefik.github.io/charts --version 42.4.0 -n aio-ingress \
+#     -f ops/portable/azure-ingress-values.yaml -f ops/portable/azure-ingress-public-values.yaml \
+#     -f <aio-catalog>/extras/edge-protection/traefik-values.yaml
+# Apply middlewares.yaml first. Roll back with: helm rollback aio-azure-ingress -n aio-ingress
+service:
+  spec:
+    # Real client IPs reach Traefik (needed for per-IP limits and CrowdSec bans). The load balancer then only
+    # sends traffic to nodes running a Traefik pod; Azure/AWS/GCP health-check the nodes for this automatically.
+    externalTrafficPolicy: Local
+logs:
+  access:
+    enabled: true   # one line per request on stdout; CrowdSec reads these
+ports:
+  web:
+    http:
+      middlewares:
+        - aio-ingress-edge-ratelimit@kubernetescrd
+        - aio-ingress-edge-inflight@kubernetescrd
+  websecure:
+    http:
+      middlewares:
+        - aio-ingress-edge-ratelimit@kubernetescrd
+        - aio-ingress-edge-inflight@kubernetescrd
+    transport:
+      respondingTimeouts:
+        readTimeout: 60s    # slow-header / slow-body clients are cut off
+        idleTimeout: 90s

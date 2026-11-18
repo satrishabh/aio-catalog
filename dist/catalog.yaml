@@ -301,6 +301,34 @@ connectors:
   license: Apache-2.0
   foundation: Independent (Broadcom)
   homepage: https://velero.io
+- id: crowdsec
+  name: CrowdSec (DDoS and abuse shield)
+  category: Security
+  kind: managed
+  phase: '5'
+  description: Optional. Reads the Traefik access logs, detects floods, scanners, brute force and known CVE probes,
+    and bans the offending IPs at the ingress for every site at once; also pulls the CrowdSec community blocklist.
+    Installing it detects only; bans start when the Traefik bouncer from extras/edge-protection is switched on.
+  namespace: crowdsec
+  deployment: crowdsec-lapi
+  chartRepo: https://crowdsecurity.github.io/helm-charts
+  chart: crowdsec
+  version: 0.24.2
+  previousVersion: 0.24.0
+  releaseName: crowdsec
+  valuesPath: values/crowdsec/values.yaml
+  requires: []
+  probes:
+  - name: Local API
+    url: http://crowdsec-service.crowdsec.svc:8080/health
+    expect: up
+  accessHint: 'kubectl -n crowdsec exec deploy/crowdsec-lapi -- cscli decisions list (alerts list, metrics). Bans
+    at the ingress need the bouncer key Secret and the Traefik overlay: see extras/edge-protection/README.md'
+  license: MIT
+  foundation: Independent (CrowdSec)
+  homepage: https://www.crowdsec.net
+  sso:
+    mode: none
 - id: trivy-operator
   name: Trivy Operator
   category: Security

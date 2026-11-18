@@ -1,0 +1,21 @@
+# Traefik overlay: CrowdSec bans at the edge. Optional; needs the crowdsec connector, the bouncer key Secret
+# and bouncer-middleware.yaml (see README.md). Pass it LAST, after traefik-values.yaml (it replaces the
+# middleware lists, putting the ban check first so banned IPs cost nothing further).
+experimental:
+  plugins:
+    crowdsec-bouncer:
+      moduleName: github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+      version: v1.8.1
+ports:
+  web:
+    http:
+      middlewares:
+        - aio-ingress-crowdsec-bouncer@kubernetescrd
+        - aio-ingress-edge-ratelimit@kubernetescrd
+        - aio-ingress-edge-inflight@kubernetescrd
+  websecure:
+    http:
+      middlewares:
+        - aio-ingress-crowdsec-bouncer@kubernetescrd
+        - aio-ingress-edge-ratelimit@kubernetescrd
+        - aio-ingress-edge-inflight@kubernetescrd
