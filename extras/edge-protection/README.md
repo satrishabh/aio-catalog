@@ -39,6 +39,11 @@ connections while the cloud updates its health probe. Roll back with `helm rollb
 
 ## Layer 2: CrowdSec bans
 
+Status on sarvaikam (AKS): ON since 2026-11-18 (connector-crowdsec 0.24.2, Traefik release revision 11). All 23
+hosts answered as before; a test ban of one IP gave 403 within ~30s on every site, lifted within ~60s; Traefik
+access lines parse 100% (crowdsecurity/traefik-logs); community blocklist pull enabled.
+
+
 1. Enable the **CrowdSec** connector in the AIO portal (Security). On its own it only detects:
    `kubectl -n crowdsec exec deploy/crowdsec-lapi -- cscli alerts list`. Layer 1 must be on (it turns on the access logs).
 2. Create the bouncer key once, in both namespaces (the same value; never commit it):
