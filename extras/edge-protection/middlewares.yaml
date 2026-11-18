@@ -1,0 +1,29 @@
+# Edge flood guard: per-client-IP limits that every site behind the AIO Traefik gets once traefik-values.yaml
+# is applied. Optional. Applied once by an admin, BEFORE the Traefik overlay (an entrypoint that names a
+# missing middleware fails every route):
+#   kubectl apply -f extras/edge-protection/middlewares.yaml
+# The numbers are generous on purpose: a person browsing, or an office behind one NAT address, never gets near
+# them; a single source sending a flood does. Tighter limits per app: rateLimit in the app chart.
+# Needs real client IPs at Traefik (service externalTrafficPolicy: Local, set by traefik-values.yaml); without
+# it every visitor arriving through the same node shares one bucket.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: edge-ratelimit
+  namespace: aio-ingress
+  labels: {app.kubernetes.io/part-of: aio-edge-protection}
+spec:
+  rateLimit:
+    average: 100   # requests per second per client IP, sustained
+    period: 1s
+    burst: 300     # page loads fetch many assets at once
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: edge-inflight
+  namespace: aio-ingress
+  labels: {app.kubernetes.io/part-of: aio-edge-protection}
+spec:
+  inFlightReq:
+    amount: 200    # requests open at the same time per client IP (slow-request floods)

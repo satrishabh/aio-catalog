@@ -1,0 +1,22 @@
+# CrowdSec bouncer for Traefik: refuses requests from IPs that CrowdSec has banned (403).
+# Applied once by an admin, after the crowdsec connector is installed and before traefik-crowdsec-values.yaml:
+#   kubectl apply -f extras/edge-protection/bouncer-middleware.yaml
+# Stream mode: the decision list is pulled every 60s and checked in memory, so no request waits on CrowdSec.
+# updateMaxFailure -1: if CrowdSec is down, traffic keeps flowing (fails open) instead of every site failing.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: crowdsec-bouncer
+  namespace: aio-ingress
+  labels: {app.kubernetes.io/part-of: aio-edge-protection}
+spec:
+  plugin:
+    crowdsec-bouncer:
+      enabled: true
+      crowdsecMode: stream
+      updateIntervalSeconds: 60
+      updateMaxFailure: -1
+      crowdsecLapiScheme: http
+      crowdsecLapiHost: crowdsec-service.crowdsec.svc:8080
+      # Traefik reads the key from Secret aio-ingress/crowdsec-bouncer (same value as crowdsec/crowdsec-bouncer)
+      crowdsecLapiKey: urn:k8s:secret:crowdsec-bouncer:api-key

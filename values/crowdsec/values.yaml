@@ -1,0 +1,45 @@
+# crowdsec values for the "crowdsec" connector (chart 0.24.2 = CrowdSec v1.8.1; rollback target 0.24.0).
+# Installed by the AIO portal through Argo CD (app connector-crowdsec, namespace crowdsec). Optional.
+#
+# What runs: the Local API (decisions database) and one agent per node that reads the Traefik pod logs.
+# On its own this only detects (cscli alerts list). Enforcement is the Traefik bouncer plugin, switched on
+# separately with extras/edge-protection (needs the bouncer key Secret described there).
+#
+# Privacy: the agents send the IPs they ban (with the scenario name) to the CrowdSec central API, which is
+# what gives access to the community blocklist. No request bodies or URLs leave the cluster.
+
+container_runtime: containerd   # AKS, EKS, GKE and OKE all use containerd
+
+agent:
+  # Traefik access log lines from the AIO ingress (Traefik must run with access logs on: the edge-protection
+  # overlay turns them on)
+  acquisition:
+    - namespace: aio-ingress
+      podName: aio-azure-ingress-traefik-*
+      program: traefik
+  env:
+    - name: COLLECTIONS
+      value: crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/base-http-scenarios
+  resources:
+    requests: { cpu: 30m, memory: 100Mi }
+    limits: { memory: 250Mi }
+  metrics:
+    enabled: false
+
+lapi:
+  env:
+    # Registers the Traefik bouncer with a key the admin creates once (Secret crowdsec/crowdsec-bouncer, key
+    # api-key). optional: the Local API still starts without it; nothing is enforced until the key exists.
+    - name: BOUNCER_KEY_traefik
+      valueFrom:
+        secretKeyRef: { name: crowdsec-bouncer, key: api-key, optional: true }
+  resources:
+    requests: { cpu: 50m, memory: 150Mi }
+    limits: { memory: 400Mi }
+  persistentVolume:
+    data: { enabled: true, size: 1Gi }
+    config: { enabled: true, size: 100Mi }
+  metrics:
+    enabled: false
+  dashboard:
+    enabled: false
