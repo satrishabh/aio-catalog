@@ -15,13 +15,16 @@ Protection (about USD 199 per IP per month) or a CDN/WAF in front (for example C
 
 ## Layer 1: edge flood guard
 
+Status on sarvaikam (AKS): ON since 2026-11-18 (Traefik release revision 10). All 23 hosts answered as before;
+a 1,500-request burst from one IP got 273 x 429 and the site answered 200 seconds later.
+
+
 ```bash
-# from the AIO repo root; CATALOG=path to this repo
+# CATALOG=path to this repo. Build on the LIVE values (helm get values), not on files that may be stale:
+# an upgrade from an old values file can drop plugins, namespaces or the public load balancer.
+helm -n aio-ingress get values aio-azure-ingress -o yaml > live-ingress-values.yaml
 kubectl apply -f $CATALOG/extras/edge-protection/middlewares.yaml      # first: the overlay refers to these
-helm upgrade aio-azure-ingress traefik --repo https://traefik.github.io/charts --version 42.4.0 -n aio-ingress \
-  -f .deploy/cloud-agnostic-20261114/ops/portable/azure-ingress-values.yaml \
-  -f .deploy/cloud-agnostic-20261114/ops/portable/azure-ingress-public-values.yaml \
-  -f $CATALOG/extras/edge-protection/traefik-values.yaml
+helm upgrade aio-azure-ingress traefik --repo https://traefik.github.io/charts --version 42.4.0 -n aio-ingress   -f live-ingress-values.yaml -f $CATALOG/extras/edge-protection/traefik-values.yaml --wait
 ```
 
 Check: sites still answer, then a burst from one machine gets 429:
@@ -49,7 +52,7 @@ connections while the cloud updates its health probe. Roll back with `helm rollb
 3. Turn on the bouncer: apply the middleware, then the overlay last:
    ```bash
    kubectl apply -f $CATALOG/extras/edge-protection/bouncer-middleware.yaml
-   helm upgrade aio-azure-ingress ... -f $CATALOG/extras/edge-protection/traefik-values.yaml \
+   helm upgrade aio-azure-ingress ... -f live-ingress-values.yaml -f $CATALOG/extras/edge-protection/traefik-values.yaml \
      -f $CATALOG/extras/edge-protection/traefik-crowdsec-values.yaml
    kubectl -n aio-ingress logs deploy/aio-azure-ingress-traefik | grep -i -E 'plugin|crowdsec'   # loaded, no errors
    ```

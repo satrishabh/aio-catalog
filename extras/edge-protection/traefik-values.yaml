@@ -8,9 +8,8 @@ service:
     # Real client IPs reach Traefik (needed for per-IP limits and CrowdSec bans). The load balancer then only
     # sends traffic to nodes running a Traefik pod; Azure/AWS/GCP health-check the nodes for this automatically.
     externalTrafficPolicy: Local
-logs:
-  access:
-    enabled: true   # one line per request on stdout; CrowdSec reads these
+accessLog:
+  enabled: true   # one line per request on stdout; CrowdSec reads these
 ports:
   web:
     http:
