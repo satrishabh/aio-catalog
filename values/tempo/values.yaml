@@ -1,0 +1,35 @@
+# Grafana Tempo values for the "tempo" connector (grafana-community chart 3.2.1 / Tempo 3.1.1;
+# rollback target 3.2.0). The old grafana/helm-charts "tempo" chart is deprecated (moved to grafana-community).
+# Installed by the AIO portal through Argo CD (app connector-tempo, namespace tempo).
+# One single-binary pod with traces on a disk from the default StorageClass, so it works the same on AKS, GKE,
+# EKS and on-prem with no cloud credentials. Traces arrive from the opentelemetry-collector connector over OTLP
+# and are queried from Grafana (datasource in extras/tempo-datasource).
+# Service: tempo.tempo.svc (3200 query API, 4317 OTLP gRPC, 4318 OTLP HTTP).
+replicas: 1
+
+tempo:
+  retention: 72h                 # traces are for recent debugging; metrics and logs keep the longer history
+  reportingEnabled: false        # no anonymous usage reports to Grafana Labs
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { memory: 1Gi }
+  # The collector sends OTLP. The chart's Jaeger receiver stays (its Service template requires it); unused.
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+
+persistence:
+  enabled: true
+  size: 5Gi
+  accessModes: [ReadWriteOnce]

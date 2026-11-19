@@ -1,0 +1,42 @@
+# Site overrides for sarvaikam.com: public checks of the sites people use, plus certificate expiry
+# (alert window 14 days; cert-manager renews at 30). Replaces config.endpoints from values.yaml.
+config:
+  endpoints:
+    - name: Argo CD API
+      group: platform
+      url: https://argocd-server.argocd.svc/healthz
+      interval: 2m
+      client:
+        insecure: true
+      conditions:
+        - "[STATUS] == 200"
+    - name: AIO portal
+      group: public
+      url: https://app.sarvaikam.com
+      interval: 2m
+      conditions:
+        - "[STATUS] < 400"
+        - "[RESPONSE_TIME] < 3000"
+        - "[CERTIFICATE_EXPIRATION] > 336h"
+    - name: Keycloak (realm aio)
+      group: public
+      url: https://profile.sarvaikam.com/realms/aio/.well-known/openid-configuration
+      interval: 2m
+      conditions:
+        - "[STATUS] == 200"
+        - "[BODY].issuer == https://profile.sarvaikam.com/realms/aio"
+        - "[CERTIFICATE_EXPIRATION] > 336h"
+    - name: Argo CD
+      group: public
+      url: https://argocd.sarvaikam.com/healthz
+      interval: 5m
+      conditions:
+        - "[STATUS] == 200"
+        - "[CERTIFICATE_EXPIRATION] > 336h"
+    - name: Grafana
+      group: public
+      url: https://grafana.tools.sarvaikam.com/api/health
+      interval: 5m
+      conditions:
+        - "[STATUS] == 200"
+        - "[CERTIFICATE_EXPIRATION] > 336h"

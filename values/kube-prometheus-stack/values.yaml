@@ -51,6 +51,11 @@ prometheus-node-exporter:
 
 grafana:
   fullnameOverride: kps-grafana   # admin password: Secret kps-grafana, key admin-password (generated)
+  # Other connectors bring their own datasource as a ConfigMap labelled grafana_datasource=1 in their namespace
+  # (loki, tempo: extras/<id>-datasource); disabling one removes its datasource again.
+  sidecar:
+    datasources:
+      searchNamespace: ALL
   persistence:
     enabled: false                 # dashboards come from the chart; nothing stateful worth a disk
   resources:

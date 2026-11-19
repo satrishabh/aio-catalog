@@ -1,14 +1,13 @@
 id: karpenter
-name: Karpenter / AKS node auto-provisioning
+name: Karpenter (EKS)
 category: Cost
 kind: planned
-phase: '4'
+phase: '5'
 clouds:
 - eks
-- aks
-description: Picks the cheapest VM size, spot first, for pending pods and removes empty nodes. On AKS this is the
-  managed Node Auto Provisioning feature (Karpenter run by Azure; needs Azure CNI overlay with Cilium), switched
-  on with az aks update, not a chart. On EKS it is the Karpenter chart.
+description: Picks the cheapest instance type, Spot first, for pending pods and removes empty nodes. On EKS it is
+  the Karpenter chart plus per-cluster IAM (node role, controller role, interruption queue); added when AIO runs
+  on EKS. AKS and GKE use the node-autoprovisioning connector.
 license: Apache-2.0
-foundation: Kubernetes
+foundation: Kubernetes (SIG Autoscaling)
 homepage: https://karpenter.sh

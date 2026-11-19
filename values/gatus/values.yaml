@@ -1,0 +1,33 @@
+# Gatus values for the "gatus" connector (chart 1.5.0 / Gatus v5.34.0; rollback target 1.4.5).
+# Installed by the AIO portal through Argo CD (app connector-gatus, namespace gatus).
+# Uptime and certificate checks with a status page and history. The common file only checks what every AIO
+# install has (Argo CD, in-cluster); public sites are added per installation in site-<site>.yaml.
+# The status page is not exposed publicly: kubectl -n gatus port-forward svc/gatus 8080:80.
+# Each site-<site>.yaml replaces config.endpoints, so it repeats the common checks.
+config:
+  storage:
+    type: sqlite                 # history survives restarts (on the disk below)
+    path: /data/data.db
+  ui:
+    title: AIO status
+    header: AIO status
+  endpoints:
+    - name: Argo CD API
+      group: platform
+      url: https://argocd-server.argocd.svc/healthz
+      interval: 2m
+      client:
+        insecure: true           # in-cluster, Argo CD's self-signed certificate
+      conditions:
+        - "[STATUS] == 200"
+
+deployment:
+  strategy: Recreate             # one pod owns the ReadWriteOnce disk; a rolling update would hang on attach
+
+persistence:
+  enabled: true
+  size: 1Gi
+
+resources:
+  requests: { cpu: 10m, memory: 32Mi }
+  limits: { memory: 128Mi }

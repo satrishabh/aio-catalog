@@ -1,0 +1,48 @@
+# AKS Node Auto Provisioning (Karpenter run by Azure). AKS creates its own NodePools "default" (on-demand) and
+# "system-surge"; this adds "aio-spot": spot VMs first, on-demand when spot is unavailable, for pods that opt in.
+# Opt-in works like the manual spot pool: the nodes carry the standard AKS spot taint, so only pods that tolerate
+#   kubernetes.azure.com/scalesetpriority=spot:NoSchedule
+# land there (dev and staging, once the app chart adds the toleration). Prod never tolerates it.
+# Empty or underused nodes are removed after 2 minutes; at most 10% of these nodes are replaced at a time.
+resources:
+  - apiVersion: karpenter.sh/v1
+    kind: NodePool
+    metadata:
+      name: aio-spot
+    spec:
+      weight: 50                 # considered before AKS's "default" pool for pods that tolerate spot
+      template:
+        metadata:
+          labels:
+            aio.platform/capacity: spot-first
+        spec:
+          nodeClassRef:
+            group: karpenter.azure.com
+            kind: AKSNodeClass
+            name: default        # created by AKS with Node Auto Provisioning
+          taints:
+            - key: kubernetes.azure.com/scalesetpriority
+              value: spot
+              effect: NoSchedule
+          requirements:
+            - key: karpenter.sh/capacity-type
+              operator: In
+              values: [spot, on-demand]   # Karpenter picks spot when it can, on-demand otherwise
+            - key: kubernetes.io/arch
+              operator: In
+              values: [amd64]
+            - key: karpenter.azure.com/sku-family
+              operator: In
+              values: [B, D]     # burstable and general purpose, like the existing b2as pool
+            - key: karpenter.azure.com/sku-cpu
+              operator: Lt
+              values: ["9"]      # small nodes: at most 8 vCPU each
+          expireAfter: 720h      # replace nodes monthly so they pick up node image updates
+      limits:
+        cpu: "16"                # hard cap on what this pool may add (cost guard)
+        memory: 64Gi
+      disruption:
+        consolidationPolicy: WhenEmptyOrUnderutilized
+        consolidateAfter: 2m
+        budgets:
+          - nodes: "10%"

@@ -177,6 +177,35 @@ connectors:
   license: MIT
   foundation: Independent
   homepage: https://kube-green.dev
+- id: node-autoprovisioning
+  name: Node autoprovisioning (AKS / GKE)
+  category: Cost
+  kind: managed
+  phase: '4'
+  clouds:
+  - aks
+  - gke
+  description: 'The cloud adds right-sized nodes for pending pods, Spot first with on-demand as fallback, and removes
+    empty ones. AKS: Node Auto Provisioning (Karpenter run by Azure), NodePool aio-spot. GKE: node auto-provisioning,
+    ComputeClass aio-spot. Pods opt in (spot toleration on AKS, compute-class selector on GKE); prod never does.'
+  namespace: node-provisioning
+  chartRepo: https://bedag.github.io/helm-charts
+  chart: raw
+  version: 2.0.2
+  previousVersion: 2.0.0
+  releaseName: node-autoprovisioning
+  valuesPath: values/node-autoprovisioning/values.yaml
+  cloudValues:
+    aks: values/node-autoprovisioning/values-aks.yaml
+    gke: values/node-autoprovisioning/values-gke.yaml
+  accessHint: 'Before Enable: CONFIRM=1 bash setup/node-autoprovisioning-aks.sh (or -gke.sh). Check: kubectl get
+    nodepools.karpenter.sh (AKS) or kubectl get computeclasses (GKE)'
+  license: Apache-2.0
+  foundation: Kubernetes (SIG Autoscaling) / cloud provider
+  homepage: https://learn.microsoft.com/azure/aks/node-autoprovision
+  pinNote: Installs only the node policy, through the generic bedag "raw" chart (Apache-2.0); the autoprovisioner
+    is the cloud's managed service, turned on by the setup script. raw 2.0.2 was released 2025-09-25; the rollback
+    target 2.0.0 renders the same resources.
 - id: opencost
   name: OpenCost
   category: Cost
@@ -234,6 +263,59 @@ connectors:
   previousVersion: 10.7.0
   siteValues:
     sarvaikam: values/oauth2-proxy/site-sarvaikam.yaml
+- id: loki
+  name: Grafana Loki
+  category: Observability
+  kind: managed
+  phase: '4'
+  description: Log storage, queried from Grafana (Explore -> Loki). Every pod's logs arrive through the OpenTelemetry
+    Collector and are kept 7 days on a 10 Gi disk (one single-binary pod; any cloud, no credentials).
+  namespace: loki
+  chartRepo: https://grafana.github.io/helm-charts
+  chart: loki
+  version: 7.5.0
+  previousVersion: 7.3.0
+  releaseName: loki
+  valuesPath: values/loki/values.yaml
+  extrasPath: extras/loki-datasource
+  requires:
+  - prometheus
+  accessHint: Grafana -> Explore -> Loki, e.g. {k8s_namespace_name="dev"}
+  probes:
+  - name: Loki ready
+    url: http://loki.loki.svc:3100/ready
+    expect: ready
+  - name: Loki labels
+    url: http://loki.loki.svc:3100/loki/api/v1/labels
+    expect: '"status":"success"'
+  license: AGPL-3.0
+  foundation: Independent (Grafana Labs)
+  homepage: https://grafana.com/oss/loki
+- id: opentelemetry-collector
+  name: OpenTelemetry Collector
+  category: Observability
+  kind: managed
+  phase: '4'
+  description: 'One collector per node: sends every container''s logs to Loki and the OTLP traces apps send to Tempo.
+    Apps opt in to traces with OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.opentelemetry.svc:4318.'
+  namespace: opentelemetry
+  chartRepo: https://open-telemetry.github.io/opentelemetry-helm-charts
+  chart: opentelemetry-collector
+  version: 0.178.2
+  previousVersion: 0.178.1
+  releaseName: otel
+  valuesPath: values/opentelemetry-collector/values.yaml
+  requires:
+  - loki
+  - tempo
+  accessHint: kubectl -n opentelemetry get daemonset otel-collector (one pod per node)
+  probes:
+  - name: Collector health (this node)
+    url: http://otel-collector.opentelemetry.svc:13133/
+    expect: Server available
+  license: Apache-2.0
+  foundation: CNCF (incubating)
+  homepage: https://opentelemetry.io
 - id: prometheus
   name: Prometheus + Grafana
   category: Observability
@@ -273,6 +355,61 @@ connectors:
     clientId: aio-grafana
   siteValues:
     sarvaikam: values/kube-prometheus-stack/site-sarvaikam.yaml
+- id: tempo
+  name: Grafana Tempo
+  category: Observability
+  kind: managed
+  phase: '4'
+  description: Trace storage, queried from Grafana (Explore -> Tempo) and linked to logs in Loki. Apps send OpenTelemetry
+    traces through the collector; kept 3 days on a 5 Gi disk (one single-binary pod; any cloud, no credentials).
+  namespace: tempo
+  chartRepo: https://grafana-community.github.io/helm-charts
+  chart: tempo
+  version: 3.2.1
+  previousVersion: 3.2.0
+  releaseName: tempo
+  valuesPath: values/tempo/values.yaml
+  extrasPath: extras/tempo-datasource
+  requires:
+  - prometheus
+  accessHint: Grafana -> Explore -> Tempo; apps send to otel-collector.opentelemetry.svc:4317
+  probes:
+  - name: Tempo ready
+    url: http://tempo.tempo.svc:3200/ready
+    expect: ready
+  license: AGPL-3.0
+  foundation: Independent (Grafana Labs)
+  homepage: https://grafana.com/oss/tempo
+  pinNote: The grafana/helm-charts "tempo" chart is deprecated (last 1.24.4, Tempo 2.9.0); it moved to grafana-community/helm-charts,
+    where 3.2.1 (Tempo 3.1.1) was released 2026-10-21.
+- id: gatus
+  name: Gatus
+  category: Reliability
+  kind: managed
+  phase: '4'
+  description: Uptime, response-time and certificate-expiry checks with a status page and history. Checks Argo CD
+    on every install, plus each installation's public sites (site overlay).
+  namespace: gatus
+  deployment: gatus
+  chartRepo: https://twin.github.io/helm-charts
+  chart: gatus
+  version: 1.5.0
+  previousVersion: 1.4.5
+  releaseName: gatus
+  valuesPath: values/gatus/values.yaml
+  siteValues:
+    sarvaikam: values/gatus/site-sarvaikam.yaml
+  accessHint: kubectl -n gatus port-forward svc/gatus 8080:80, then http://localhost:8080
+  probes:
+  - name: Gatus health
+    url: http://gatus.gatus.svc/health
+    expect: UP
+  - name: Gatus checks
+    url: http://gatus.gatus.svc/api/v1/endpoints/statuses
+    expect: '"results"'
+  license: Apache-2.0
+  foundation: Independent (TwiN)
+  homepage: https://gatus.io
 - id: velero
   name: Velero
   category: Reliability
@@ -329,6 +466,26 @@ connectors:
   homepage: https://www.crowdsec.net
   sso:
     mode: none
+- id: external-secrets
+  name: External Secrets Operator
+  category: Security
+  kind: managed
+  phase: '4'
+  description: 'Syncs secrets from Azure Key Vault, GCP Secret Manager, AWS or OpenBao into Kubernetes Secrets without
+    keys: the setup script links the cloud''s secret store through workload identity.'
+  namespace: external-secrets
+  deployment: external-secrets
+  chartRepo: https://charts.external-secrets.io
+  chart: external-secrets
+  version: 2.14.0
+  previousVersion: 2.13.0
+  releaseName: external-secrets
+  valuesPath: values/external-secrets/values.yaml
+  accessHint: 'After Enable: bash setup/external-secrets-setup-azure.sh (AKS) or setup/external-secrets-setup-gcp.sh
+    (GKE). Check: kubectl get clustersecretstore,externalsecret -A'
+  license: Apache-2.0
+  foundation: CNCF (incubating)
+  homepage: https://external-secrets.io
 - id: trivy-operator
   name: Trivy Operator
   category: Security
@@ -542,18 +699,17 @@ connectors:
   version: 1.8.7
   previousVersion: 1.8.6
 - id: karpenter
-  name: Karpenter / AKS node auto-provisioning
+  name: Karpenter (EKS)
   category: Cost
   kind: planned
-  phase: '4'
+  phase: '5'
   clouds:
   - eks
-  - aks
-  description: Picks the cheapest VM size, spot first, for pending pods and removes empty nodes. On AKS this is
-    the managed Node Auto Provisioning feature (Karpenter run by Azure; needs Azure CNI overlay with Cilium), switched
-    on with az aks update, not a chart. On EKS it is the Karpenter chart.
+  description: Picks the cheapest instance type, Spot first, for pending pods and removes empty nodes. On EKS it
+    is the Karpenter chart plus per-cluster IAM (node role, controller role, interruption queue); added when AIO
+    runs on EKS. AKS and GKE use the node-autoprovisioning connector.
   license: Apache-2.0
-  foundation: Kubernetes
+  foundation: Kubernetes (SIG Autoscaling)
   homepage: https://karpenter.sh
 - id: koordinator
   name: Koordinator
@@ -829,21 +985,6 @@ connectors:
   homepage: https://www.jaegertracing.io
   version: 4.16.1
   previousVersion: 4.16.0
-- id: loki
-  name: Grafana Loki
-  category: Observability
-  kind: planned
-  phase: '5'
-  description: Log storage queried from Grafana; stores logs in Azure Blob / S3 / GCS.
-  chartRepo: https://grafana.github.io/helm-charts
-  chart: loki
-  requires:
-  - prometheus
-  license: AGPL-3.0
-  foundation: Independent (Grafana Labs)
-  homepage: https://grafana.com/oss/loki
-  version: 7.5.0
-  previousVersion: 7.3.0
 - id: opennms
   name: OpenNMS Horizon
   category: Observability
@@ -873,19 +1014,6 @@ connectors:
   homepage: https://opensearch.org
   version: 3.9.0
   previousVersion: 3.8.0
-- id: opentelemetry-collector
-  name: OpenTelemetry Collector
-  category: Observability
-  kind: planned
-  phase: '5'
-  description: Vendor-neutral pipeline for traces, metrics and logs from apps.
-  chartRepo: https://open-telemetry.github.io/opentelemetry-helm-charts
-  chart: opentelemetry-collector
-  license: Apache-2.0
-  foundation: CNCF (incubating)
-  homepage: https://opentelemetry.io
-  version: 0.178.2
-  previousVersion: 0.178.1
 - id: skywalking
   name: Apache SkyWalking
   category: Observability
@@ -1006,19 +1134,6 @@ connectors:
   homepage: https://dependencytrack.org
   version: 2.9.0
   previousVersion: 2.8.0
-- id: external-secrets
-  name: External Secrets Operator
-  category: Security
-  kind: planned
-  phase: '5'
-  description: Syncs secrets from Azure Key Vault, GCP Secret Manager, AWS or OpenBao into Kubernetes.
-  chartRepo: https://charts.external-secrets.io
-  chart: external-secrets
-  license: Apache-2.0
-  foundation: CNCF (incubating)
-  homepage: https://external-secrets.io
-  version: 2.14.0
-  previousVersion: 2.13.0
 - id: falco
   name: Falco
   category: Security

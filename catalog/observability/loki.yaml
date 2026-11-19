@@ -1,15 +1,28 @@
 id: loki
 name: Grafana Loki
 category: Observability
-kind: planned
-phase: '5'
-description: Log storage queried from Grafana; stores logs in Azure Blob / S3 / GCS.
+kind: managed
+phase: '4'
+description: Log storage, queried from Grafana (Explore -> Loki). Every pod's logs arrive through the OpenTelemetry
+  Collector and are kept 7 days on a 10 Gi disk (one single-binary pod; any cloud, no credentials).
+namespace: loki
 chartRepo: https://grafana.github.io/helm-charts
 chart: loki
+version: 7.5.0
+previousVersion: 7.3.0
+releaseName: loki
+valuesPath: values/loki/values.yaml
+extrasPath: extras/loki-datasource
 requires:
 - prometheus
+accessHint: Grafana -> Explore -> Loki, e.g. {k8s_namespace_name="dev"}
+probes:
+- name: Loki ready
+  url: http://loki.loki.svc:3100/ready
+  expect: ready
+- name: Loki labels
+  url: http://loki.loki.svc:3100/loki/api/v1/labels
+  expect: '"status":"success"'
 license: AGPL-3.0
 foundation: Independent (Grafana Labs)
 homepage: https://grafana.com/oss/loki
-version: 7.5.0
-previousVersion: 7.3.0
