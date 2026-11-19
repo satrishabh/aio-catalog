@@ -1,0 +1,26 @@
+# Grafana datasource for the loki connector, picked up by the Grafana sidecar of the prometheus connector
+# (label grafana_datasource=1, searched in all namespaces). Synced with the Loki chart; removed on Disable.
+# A log line's trace_id links to the trace in Tempo (when the tempo connector is enabled).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loki-grafana-datasource
+  labels:
+    grafana_datasource: "1"
+data:
+  loki.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Loki
+        uid: loki
+        type: loki
+        access: proxy
+        url: http://loki.loki.svc:3100
+        jsonData:
+          maxLines: 1000
+          derivedFields:
+            - name: TraceID
+              matcherType: label
+              matcherRegex: trace_id
+              datasourceUid: tempo
+              url: "$${__value.raw}"

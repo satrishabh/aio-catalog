@@ -1,0 +1,24 @@
+# External Secrets Operator values for the "external-secrets" connector (chart 2.14.0; rollback target 2.13.0).
+# Installed by the AIO portal through Argo CD (app connector-external-secrets, namespace external-secrets).
+# The same values work on every cloud: nothing cloud-specific runs in the operator. The link to the cloud's secret
+# store is a ClusterSecretStore that the setup script creates after Enable, with keyless access:
+#   AKS  setup/external-secrets-setup-azure.sh  -> ClusterSecretStore azure-keyvault (Key Vault, Entra Workload ID
+#        through the service account external-secrets/aio-keyvault; the operator itself gets no Azure access)
+#   GKE  setup/external-secrets-setup-gcp.sh    -> ClusterSecretStore gcp-secret-manager (Secret Manager, GKE
+#        Workload Identity on the operator's own service account; read-only, no key file)
+# Apps then declare an ExternalSecret in their namespace; the operator writes an ordinary Kubernetes Secret.
+installCRDs: true
+
+resources:
+  requests: { cpu: 10m, memory: 64Mi }
+  limits: { memory: 192Mi }
+
+webhook:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 128Mi }
+
+certController:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 128Mi }

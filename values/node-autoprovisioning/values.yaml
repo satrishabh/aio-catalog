@@ -1,0 +1,9 @@
+# Values for the "node-autoprovisioning" connector (bedag "raw" chart 2.0.2; rollback target 2.0.0).
+# Installed by the AIO portal through Argo CD (app connector-node-autoprovisioning, namespace node-provisioning).
+# The cloud runs the autoprovisioner; this connector only syncs AIO's node policy for it, from the cloud overlay:
+#   AKS  values-aks.yaml  Karpenter NodePool "aio-spot" (needs Node Auto Provisioning: setup/node-autoprovisioning-aks.sh)
+#   GKE  values-gke.yaml  ComputeClass "aio-spot"       (needs node auto-provisioning: setup/node-autoprovisioning-gke.sh)
+# Run the setup script first. Before it, the policy's API does not exist, Argo CD cannot sync it, and the
+# connector shows Degraded ("resource mapping not found"): that is the signal that the cloud feature is off.
+# Disable removes only the policy; the cloud feature stays on until the setup script is run with DISABLE=1.
+resources: []

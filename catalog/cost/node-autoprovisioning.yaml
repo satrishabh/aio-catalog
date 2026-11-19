@@ -1,0 +1,29 @@
+id: node-autoprovisioning
+name: Node autoprovisioning (AKS / GKE)
+category: Cost
+kind: managed
+phase: '4'
+clouds:
+- aks
+- gke
+description: 'The cloud adds right-sized nodes for pending pods, Spot first with on-demand as fallback, and removes
+  empty ones. AKS: Node Auto Provisioning (Karpenter run by Azure), NodePool aio-spot. GKE: node auto-provisioning,
+  ComputeClass aio-spot. Pods opt in (spot toleration on AKS, compute-class selector on GKE); prod never does.'
+namespace: node-provisioning
+chartRepo: https://bedag.github.io/helm-charts
+chart: raw
+version: 2.0.2
+previousVersion: 2.0.0
+releaseName: node-autoprovisioning
+valuesPath: values/node-autoprovisioning/values.yaml
+cloudValues:
+  aks: values/node-autoprovisioning/values-aks.yaml
+  gke: values/node-autoprovisioning/values-gke.yaml
+accessHint: 'Before Enable: CONFIRM=1 bash setup/node-autoprovisioning-aks.sh (or -gke.sh). Check: kubectl get nodepools.karpenter.sh
+  (AKS) or kubectl get computeclasses (GKE)'
+license: Apache-2.0
+foundation: Kubernetes (SIG Autoscaling) / cloud provider
+homepage: https://learn.microsoft.com/azure/aks/node-autoprovision
+pinNote: Installs only the node policy, through the generic bedag "raw" chart (Apache-2.0); the autoprovisioner
+  is the cloud's managed service, turned on by the setup script. raw 2.0.2 was released 2025-09-25; the rollback
+  target 2.0.0 renders the same resources.

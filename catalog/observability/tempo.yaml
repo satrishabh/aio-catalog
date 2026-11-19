@@ -1,0 +1,27 @@
+id: tempo
+name: Grafana Tempo
+category: Observability
+kind: managed
+phase: '4'
+description: Trace storage, queried from Grafana (Explore -> Tempo) and linked to logs in Loki. Apps send OpenTelemetry
+  traces through the collector; kept 3 days on a 5 Gi disk (one single-binary pod; any cloud, no credentials).
+namespace: tempo
+chartRepo: https://grafana-community.github.io/helm-charts
+chart: tempo
+version: 3.2.1
+previousVersion: 3.2.0
+releaseName: tempo
+valuesPath: values/tempo/values.yaml
+extrasPath: extras/tempo-datasource
+requires:
+- prometheus
+accessHint: Grafana -> Explore -> Tempo; apps send to otel-collector.opentelemetry.svc:4317
+probes:
+- name: Tempo ready
+  url: http://tempo.tempo.svc:3200/ready
+  expect: ready
+license: AGPL-3.0
+foundation: Independent (Grafana Labs)
+homepage: https://grafana.com/oss/tempo
+pinNote: The grafana/helm-charts "tempo" chart is deprecated (last 1.24.4, Tempo 2.9.0); it moved to grafana-community/helm-charts,
+  where 3.2.1 (Tempo 3.1.1) was released 2026-10-21.

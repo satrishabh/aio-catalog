@@ -1,0 +1,28 @@
+id: gatus
+name: Gatus
+category: Reliability
+kind: managed
+phase: '4'
+description: Uptime, response-time and certificate-expiry checks with a status page and history. Checks Argo CD
+  on every install, plus each installation's public sites (site overlay).
+namespace: gatus
+deployment: gatus
+chartRepo: https://twin.github.io/helm-charts
+chart: gatus
+version: 1.5.0
+previousVersion: 1.4.5
+releaseName: gatus
+valuesPath: values/gatus/values.yaml
+siteValues:
+  sarvaikam: values/gatus/site-sarvaikam.yaml
+accessHint: kubectl -n gatus port-forward svc/gatus 8080:80, then http://localhost:8080
+probes:
+- name: Gatus health
+  url: http://gatus.gatus.svc/health
+  expect: UP
+- name: Gatus checks
+  url: http://gatus.gatus.svc/api/v1/endpoints/statuses
+  expect: '"results"'
+license: Apache-2.0
+foundation: Independent (TwiN)
+homepage: https://gatus.io

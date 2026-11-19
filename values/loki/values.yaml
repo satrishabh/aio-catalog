@@ -1,0 +1,62 @@
+# Grafana Loki values for the "loki" connector (chart 7.5.0 / Loki 3.6.16; rollback target 7.3.0).
+# Installed by the AIO portal through Argo CD (app connector-loki, namespace loki).
+# One single-binary pod with its index and chunks on a disk from the default StorageClass, so it works the same
+# on AKS, GKE, EKS and on-prem with no cloud credentials. Logs arrive from the opentelemetry-collector connector
+# (OTLP over HTTP) and are queried from Grafana (datasource in extras/loki-datasource).
+# Service: loki.loki.svc:3100 (no gateway; nothing outside the cluster writes to it).
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false            # single tenant; reachable only inside the cluster
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  limits_config:
+    retention_period: 168h       # 7 days, enforced by the compactor below
+    allow_structured_metadata: true
+    volume_enabled: true
+    ingestion_rate_mb: 4
+    ingestion_burst_size_mb: 8
+  compactor:
+    retention_enabled: true
+    delete_request_store: filesystem
+  pattern_ingester:
+    enabled: false
+  ruler:
+    enable_api: false
+
+singleBinary:
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 768Mi }
+  persistence:
+    enabled: true
+    size: 10Gi
+
+# Simple-scalable components off: single binary only
+read: { replicas: 0 }
+write: { replicas: 0 }
+backend: { replicas: 0 }
+
+# Memcached caches request several GiB by default; not worth it at this size
+chunksCache: { enabled: false }
+resultsCache: { enabled: false }
+gateway: { enabled: false }
+lokiCanary: { enabled: false }
+test: { enabled: false }
+ruler: { enabled: false }
+minio: { enabled: false }
+sidecar:
+  rules:
+    enabled: false

@@ -1,0 +1,78 @@
+# OpenTelemetry Collector values for the "opentelemetry-collector" connector (chart 0.178.2 / collector 0.163.2;
+# rollback target 0.178.1). Installed by the AIO portal through Argo CD (app connector-opentelemetry-collector,
+# namespace opentelemetry). Needs the loki and tempo connectors (it sends to both).
+#
+# One collector per node (DaemonSet):
+#   logs    every container's stdout/stderr on the node (filelog), tagged with namespace / pod / container /
+#           workload, sent to Loki over OTLP HTTP
+#   traces  apps send OTLP to otel-collector.opentelemetry.svc:4317 (gRPC) or :4318 (HTTP); sent to Tempo
+# Apps opt in to traces by setting OTEL_EXPORTER_OTLP_ENDPOINT; nothing changes for apps that do not.
+# Works on any cloud: no cloud credentials, no host ports.
+mode: daemonset
+fullnameOverride: otel-collector
+
+image:
+  repository: otel/opentelemetry-collector-k8s   # official Kubernetes distribution (filelog, k8sattributes, otlp)
+
+presets:
+  logsCollection:
+    enabled: true                # mounts /var/log/pods read-only; the collector's own logs are skipped
+  kubernetesAttributes:
+    enabled: true                # adds k8s.namespace.name, k8s.pod.name, k8s.deployment.name, ... (read-only RBAC)
+
+config:
+  receivers:
+    # Only OTLP from apps; the chart's Jaeger, Zipkin and self-scrape receivers are not used
+    jaeger: null
+    zipkin: null
+    prometheus: null
+  exporters:
+    debug: null
+    otlphttp/loki:
+      endpoint: http://loki.loki.svc:3100/otlp
+    otlp/tempo:
+      endpoint: tempo.tempo.svc:4317
+      tls:
+        insecure: true           # in-cluster only
+  processors:
+    batch:
+      send_batch_size: 1024
+      timeout: 5s
+  service:
+    pipelines:
+      logs:
+        receivers: [otlp]        # the logsCollection preset adds filelog
+        processors: [memory_limiter, batch]
+        exporters: [otlphttp/loki]
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [otlp/tempo]
+      metrics: null              # metrics stay with Prometheus (prometheus connector)
+
+ports:
+  otlp:
+    hostPort: 0                  # reachable through the Service only, not on node IPs
+  otlp-http:
+    hostPort: 0
+  jaeger-compact: { enabled: false }
+  jaeger-thrift: { enabled: false }
+  jaeger-grpc: { enabled: false }
+  zipkin: { enabled: false }
+  health:                        # health_check extension, probed by the portal's Test
+    enabled: true
+    containerPort: 13133
+    servicePort: 13133
+    protocol: TCP
+
+service:
+  enabled: true
+  internalTrafficPolicy: Local   # an app's spans go to the collector on its own node
+
+resources:
+  requests: { cpu: 50m, memory: 128Mi }
+  limits: { memory: 256Mi }      # GOMEMLIMIT and memory_limiter follow this
+
+# Run on every node, including tainted spot nodes, so no node's logs are missed
+tolerations:
+  - operator: Exists
