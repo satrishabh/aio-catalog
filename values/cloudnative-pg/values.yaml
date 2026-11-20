@@ -1,0 +1,38 @@
+# CloudNativePG values for the "cloudnative-pg" connector (chart 0.29.1 / operator 1.30.1; rollback target 0.29.0).
+# Installed by the AIO portal through Argo CD (app connector-cloudnative-pg, namespace cnpg-system).
+#
+# Installs the operator and its CRDs only. Each app that needs PostgreSQL gets its own Cluster in its namespace,
+# for example in dev:
+#
+#   apiVersion: postgresql.cnpg.io/v1
+#   kind: Cluster
+#   metadata: { name: shop-db, namespace: dev }
+#   spec:
+#     instances: 1                 # 2-3 in prod for failover
+#     storage: { size: 2Gi }       # default StorageClass: managed disk on AKS, PD on GKE, EBS on EKS
+#     resources:
+#       requests: { cpu: 50m, memory: 192Mi }
+#       limits: { memory: 384Mi }
+#     bootstrap:
+#       initdb: { database: shop, owner: shop }
+#
+# The operator creates Secret shop-db-app (keys uri, jdbc-uri, host, port, dbname, username, password) and the
+# Services shop-db-rw (read-write) and shop-db-r (read). The app uses shop-db-rw.dev.svc:5432.
+# Backups: Velero (phase 3) copies the volumes nightly (crash-consistent). Point-in-time recovery needs the
+# Barman Cloud plugin and an object-storage identity per cloud; not part of this connector yet.
+fullnameOverride: cnpg-controller-manager
+
+crds:
+  create: true
+
+config:
+  clusterWide: true              # manages Clusters in every namespace (dev, staging, prod, app namespaces)
+
+resources:
+  requests: { cpu: 20m, memory: 96Mi }
+  limits: { memory: 256Mi }
+
+monitoring:
+  podMonitorEnabled: false       # turn on when Prometheus is enabled
+  grafanaDashboard:
+    create: false

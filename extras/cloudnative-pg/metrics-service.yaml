@@ -1,0 +1,20 @@
+# Plain-HTTP Service for the operator's metrics port, so the AIO connector Test can check that the operator's
+# controllers are running (the chart only exposes the TLS webhook port).
+apiVersion: v1
+kind: Service
+metadata:
+  name: cnpg-metrics
+  namespace: cnpg-system
+  labels:
+    app.kubernetes.io/name: cloudnative-pg
+    app.kubernetes.io/component: metrics
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: cloudnative-pg
+    app.kubernetes.io/instance: cnpg
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: metrics
+      protocol: TCP

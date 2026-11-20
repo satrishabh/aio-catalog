@@ -1,10 +1,14 @@
 id: biome
 name: Biome (CI step)
 category: CI/CD
-kind: planned
+kind: core
 phase: '5'
-description: Fast linter and formatter for JavaScript, TypeScript, JSON and CSS. Runs as a step in the AIO CI pipeline
-  (biome ci), not as a service.
+namespace: tekton-pipelines
+deployment: tekton-pipelines-controller
+description: 'Linter and formatter for JavaScript, TypeScript, JSX, JSON and CSS (Biome 2.6.5). Runs as the "lint"
+  step of the AIO CI pipeline (Task lint-biome, "biome ci"), not as a service, so its status is the Tekton
+  controller''s. Off until phase 5 is switched on (Connectors -> Phases); then it runs for repos with biome.json
+  or biome.jsonc, and a finding fails the run before the build.'
 license: MIT OR Apache-2.0
 foundation: Independent
 homepage: https://biomejs.dev

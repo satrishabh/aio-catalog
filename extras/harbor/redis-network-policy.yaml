@@ -1,0 +1,17 @@
+# Harbor's internal Redis has no password. Only pods in the harbor namespace may reach it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: harbor-redis
+  namespace: harbor
+spec:
+  podSelector:
+    matchLabels:
+      release: harbor
+      component: redis
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {}
+      ports:
+        - { port: 6379, protocol: TCP }

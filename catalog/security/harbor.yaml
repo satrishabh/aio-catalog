@@ -1,11 +1,34 @@
 id: harbor
 name: Harbor
 category: Security
-kind: planned
+kind: managed
 phase: '5'
-description: Private container registry with Trivy scanning, signing, replication and OIDC login.
+description: Private container registry with projects, robot accounts, retention rules, replication and Keycloak
+  login. Any cloud; images on a 20 Gi disk, database on CloudNativePG. Image scanning stays in the AIO pipeline
+  and the Trivy Operator, so Harbor's own scanner is off.
+namespace: harbor
+deployment: harbor-core
 chartRepo: https://helm.goharbor.io
 chart: harbor
+version: 1.19.4
+previousVersion: 1.19.2
+releaseName: harbor
+valuesPath: values/harbor/values.yaml
+siteValues:
+  sarvaikam: values/harbor/site-sarvaikam.yaml
+extrasPath: extras/harbor
+requires:
+- cloudnative-pg
+accessHint: 'Run setup/harbor-secrets.sh (aio-catalog) before Enable. With a site overlay: https://harbor.<tools domain>
+  (sarvaikam: harbor.tools.sarvaikam.com). Otherwise kubectl -n harbor port-forward svc/harbor 8080:80. Admin password:
+  kubectl -n harbor get secret harbor-secrets -o jsonpath=''{.data.HARBOR_ADMIN_PASSWORD}'' | base64 -d'
+probes:
+- name: Harbor API
+  url: http://harbor-core.harbor.svc/api/v2.0/ping
+  expect: Pong
+- name: All Harbor components healthy
+  url: http://harbor-core.harbor.svc/api/v2.0/health
+  expect: '"status":"healthy"'
 sso:
   mode: oidc
   clientId: aio-harbor
@@ -13,5 +36,3 @@ license: Apache-2.0
 foundation: CNCF (graduated)
 origin: China (VMware China R&D)
 homepage: https://goharbor.io
-version: 1.19.4
-previousVersion: 1.19.2

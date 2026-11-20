@@ -1,14 +1,28 @@
 id: valkey
 name: Valkey
 category: Data
-kind: planned
+kind: managed
 phase: '5'
-description: 'In-memory key-value store (cache, queues, sessions): the open-source fork of Redis, which is no longer
-  OSI-licensed. Drop-in compatible with Redis clients.'
+description: 'Shared in-memory key-value store for apps in dev and staging (cache, queues, sessions): the open-source
+  fork of Redis, which is no longer OSI-licensed. Drop-in compatible with Redis clients. Password required; data
+  is kept on a disk and survives restarts.'
+namespace: valkey
+deployment: valkey
 chartRepo: https://valkey.io/valkey-helm
 chart: valkey
+version: 0.12.1
+previousVersion: 0.12.0
+releaseName: valkey
+valuesPath: values/valkey/values.yaml
+accessHint: 'Create the password Secret before Enable: kubectl create ns valkey; kubectl -n valkey create secret generic
+  valkey-users --from-literal=default="$(openssl rand -hex 24)". Apps in dev and staging connect to valkey.valkey.svc:6379
+  as user default. Shell: kubectl -n valkey exec -it deploy/valkey -c valkey -- valkey-cli --user default --askpass'
+probes:
+- name: Valkey accepts the password (exporter)
+  url: http://valkey-metrics.valkey.svc:9121/metrics
+  expect: redis_up 1
 license: BSD-3-Clause
 foundation: Linux Foundation
 homepage: https://valkey.io
-version: 0.12.1
-previousVersion: 0.12.0
+pinNote: The metrics sidecar is redis_exporter (ghcr.io/oliver006/redis_exporter, MIT), the exporter the chart ships
+  with, from that project's own registry. Test uses it to prove Valkey accepts the password.
