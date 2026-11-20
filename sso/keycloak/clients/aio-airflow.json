@@ -8,7 +8,7 @@
   "implicitFlowEnabled": false,
   "serviceAccountsEnabled": false,
   "redirectUris": [
-    "https://airflow.tools.sarvaikam.com/oauth-authorized/keycloak"
+    "https://airflow.tools.sarvaikam.com/auth/oauth-authorized/keycloak"
   ],
   "webOrigins": [
     "https://airflow.tools.sarvaikam.com"
@@ -26,5 +26,21 @@
   "x-aio-roles": [
     "aio-admin",
     "aio-business"
+  ],
+  "protocolMappers": [
+    {
+      "name": "client roles as groups",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-client-role-mapper",
+      "config": {
+        "usermodel.clientRoleMapping.clientId": "aio-airflow",
+        "claim.name": "groups",
+        "jsonType.label": "String",
+        "multivalued": "true",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "userinfo.token.claim": "true"
+      }
+    }
   ]
 }

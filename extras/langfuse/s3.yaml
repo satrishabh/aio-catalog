@@ -1,0 +1,123 @@
+# Langfuse's blob storage (raw ingestion events): one SeaweedFS server (master + volume + filer + S3 gateway in one
+# process), official image chrislusf/seaweedfs (Apache-2.0). Same command line as the all-in-one mode of the
+# SeaweedFS chart that the Langfuse chart bundles (4.23); keep the image tag aligned with it.
+# S3 login from Secret langfuse-s3-auth (key seaweedfs_s3_config, setup/langfuse-secrets.sh). The pod creates the
+# bucket "langfuse" itself at start if it is missing.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: langfuse-s3
+  namespace: langfuse
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests: { storage: 10Gi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: langfuse-s3
+  namespace: langfuse
+  labels: { app.kubernetes.io/name: seaweedfs, app.kubernetes.io/instance: langfuse }
+spec:
+  selector: { app.kubernetes.io/name: seaweedfs, app.kubernetes.io/instance: langfuse }
+  ports:
+    - { name: s3, port: 8333, targetPort: s3, protocol: TCP }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: langfuse-s3
+  namespace: langfuse
+  labels: { app.kubernetes.io/name: seaweedfs, app.kubernetes.io/instance: langfuse }
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate                             # one pod owns the ReadWriteOnce disk
+  selector:
+    matchLabels: { app.kubernetes.io/name: seaweedfs, app.kubernetes.io/instance: langfuse }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: seaweedfs, app.kubernetes.io/instance: langfuse }
+    spec:
+      enableServiceLinks: false
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: seaweedfs
+          image: chrislusf/seaweedfs:4.23
+          env:
+            - name: POD_IP
+              valueFrom: { fieldRef: { fieldPath: status.podIP } }
+            # for "weed shell" (bucket creation below)
+            - { name: WEED_CLUSTER_DEFAULT, value: sw }
+            - { name: WEED_CLUSTER_SW_MASTER, value: "127.0.0.1:9333" }
+            - { name: WEED_CLUSTER_SW_FILER, value: "127.0.0.1:8888" }
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              (
+                until echo 's3.bucket.list' | /usr/bin/weed shell 2>/dev/null | awk '{print $1}' | grep -Fxq langfuse; do
+                  sleep 5
+                  echo 's3.bucket.create --name langfuse' | /usr/bin/weed shell >/dev/null 2>&1 || true
+                done
+                echo "bucket langfuse ready"
+              ) &
+              exec /usr/bin/weed -v=0 server \
+                -dir=/data \
+                -master -volume -filer -s3 \
+                -ip=${POD_IP} -ip.bind=0.0.0.0 \
+                -idleTimeout=30 \
+                -volume.max=0 \
+                -master.port=9333 \
+                -master.defaultReplication=000 \
+                -master.volumeSizeLimitMB=1000 \
+                -volume.port=8080 \
+                -volume.readMode=proxy \
+                -volume.minFreeSpacePercent=1 \
+                -volume.compactionMBps=50 \
+                -filer.port=8888 \
+                -filer.defaultReplicaPlacement=000 \
+                -s3.port=8333 \
+                -s3.config=/etc/sw/s3/seaweedfs_s3_config
+          ports:
+            - { name: s3, containerPort: 8333, protocol: TCP }
+            - { name: master, containerPort: 9333, protocol: TCP }
+          readinessProbe:
+            httpGet: { path: /cluster/status, port: master }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          livenessProbe:
+            httpGet: { path: /cluster/status, port: master }
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            failureThreshold: 5
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 512Mi }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+            - { name: s3-config, mountPath: /etc/sw/s3, readOnly: true }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: langfuse-s3 }
+        - name: s3-config
+          secret:
+            secretName: langfuse-s3-auth
+            items:
+              - { key: seaweedfs_s3_config, path: seaweedfs_s3_config }
+---
+# The S3 store serves Langfuse only: nothing outside this namespace may connect.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: langfuse-s3
+  namespace: langfuse
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: seaweedfs, app.kubernetes.io/instance: langfuse }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {}

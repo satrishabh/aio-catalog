@@ -1,0 +1,51 @@
+# Site overrides for sarvaikam.com: Dependency-Track at https://dependency-track.tools.sarvaikam.com with Keycloak
+# login (realm aio, client aio-dependency-track).
+#
+# DT's frontend is a browser app that runs the OIDC authorization-code flow with PKCE itself and hands the ID token
+# to the API server, which validates it against the issuer. So the Keycloak client is PUBLIC (no client secret
+# anywhere), with redirect URI https://dependency-track.tools.sarvaikam.com/static/oidc-callback.html and web origin
+# https://dependency-track.tools.sarvaikam.com. Users are created on first login (preferred_username). Team
+# membership follows the flat "groups" claim (client roles aio-admin / aio-business of aio-dependency-track):
+# setup/dependency-track-secrets.sh maps aio-admin -> Administrators and aio-business -> Viewers (read-only).
+# Local users (admin) keep working next to SSO.
+ingress:
+  enabled: true
+  ingressClassName: aio-azure
+  hostname: dependency-track.tools.sarvaikam.com
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-azure
+  tls:
+    - secretName: dependency-track-tools-tls     # issued by cert-manager (annotation above)
+      hosts:
+        - dependency-track.tools.sarvaikam.com
+
+apiServer:
+  extraEnv:                     # apiServer.web.extraEnv (base values) stays; both lists are rendered
+    - name: DT_OIDC_ENABLED
+      value: "true"
+    - name: DT_OIDC_ISSUER
+      value: https://profile.sarvaikam.com/realms/aio
+    - name: DT_OIDC_CLIENT_ID
+      value: aio-dependency-track
+    - name: DT_OIDC_USERNAME_CLAIM
+      value: preferred_username
+    - name: DT_OIDC_USER_PROVISIONING
+      value: "true"
+    - name: DT_OIDC_TEAM_SYNCHRONIZATION
+      value: "true"
+    - name: DT_OIDC_TEAMS_CLAIM
+      value: groups
+
+frontend:
+  apiBaseUrl: ""                # same host: the ingress routes /api to the API server
+  extraEnv:                     # replaces the base list, so OIDC_FLOW and OIDC_SCOPE are repeated here
+    - name: OIDC_ISSUER
+      value: https://profile.sarvaikam.com/realms/aio
+    - name: OIDC_CLIENT_ID
+      value: aio-dependency-track
+    - name: OIDC_SCOPE
+      value: "openid profile email"
+    - name: OIDC_FLOW
+      value: code
+    - name: OIDC_LOGIN_BUTTON_TEXT
+      value: Sign in with AIO

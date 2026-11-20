@@ -1,0 +1,37 @@
+# Site overrides for sarvaikam.com: Langfuse at https://langfuse.tools.sarvaikam.com with Keycloak login (realm aio,
+# client aio-langfuse, callback https://langfuse.tools.sarvaikam.com/api/auth/callback/keycloak).
+# Needs Secret langfuse/langfuse-oidc (key client-secret), written by setup/langfuse-secrets.sh with
+# OIDC_CLIENT_SECRET set. Run that script with LANGFUSE_ADMIN_EMAIL = the admin's e-mail address in Keycloak.
+#
+# Only Keycloak login (no Langfuse passwords on the public URL). A Keycloak user gets a Langfuse account at first
+# login but sees nothing until a Langfuse admin adds them to the AIO organisation or a project (Langfuse OSS cannot
+# map Keycloak roles; give aio-business users the Viewer role there). The admin's first Keycloak login is linked
+# by e-mail to the admin user created by the setup script, who owns the AIO organisation.
+# Apps keep sending traces in-cluster (http://langfuse-web.langfuse.svc:3000); the public URL is for people.
+langfuse:
+  nextauth:
+    url: https://langfuse.tools.sarvaikam.com
+  features:
+    signUpDisabled: false                      # Keycloak users need an account at first login
+  auth:
+    disableUsernamePassword: true
+    providers:
+      keycloak:
+        name: AIO
+        clientId: aio-langfuse
+        clientSecret:
+          secretKeyRef: { name: langfuse-oidc, key: client-secret }
+        issuer: https://profile.sarvaikam.com/realms/aio
+        allowAccountLinking: "true"            # links the admin's Keycloak login to the setup-script admin (same e-mail)
+  ingress:
+    enabled: true
+    className: aio-azure
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-azure
+    hosts:
+      - host: langfuse.tools.sarvaikam.com
+        paths:
+          - { path: /, pathType: Prefix }
+    tls:
+      enabled: true
+      secretName: langfuse-tools-tls

@@ -1,16 +1,39 @@
 id: superset
 name: Apache Superset
 category: Data
-kind: planned
+kind: managed
 phase: '6'
-description: BI dashboards and SQL exploration.
+description: BI dashboards, charts and SQL exploration over your databases, with Keycloak login. Sized for a small
+  cluster with one web pod and no Celery or Redis (queries run synchronously; no scheduled reports or thumbnails);
+  metadata database on CloudNativePG.
+namespace: superset
+deployment: superset
 chartRepo: https://apache.github.io/superset
 chart: superset
+version: 0.22.8
+previousVersion: 0.22.7
+releaseName: superset
+valuesPath: values/superset/values.yaml
+siteValues:
+  sarvaikam: values/superset/site-sarvaikam.yaml
+extrasPath: extras/superset
+requires:
+- cloudnative-pg
+accessHint: 'Run setup/superset-secrets.sh (aio-catalog) before Enable. With a site overlay: https://superset.<tools domain>
+  (sarvaikam: superset.tools.sarvaikam.com, Keycloak login). Otherwise kubectl -n superset port-forward svc/superset 8088:8088
+  and sign in as admin; password: kubectl -n superset get secret superset-secrets -o jsonpath=''{.data.SUPERSET_ADMIN_PASSWORD}''
+  | base64 -d'
+probes:
+- name: Superset web app
+  url: http://superset.superset.svc:8088/health
+  expect: OK
 sso:
   mode: oidc
   clientId: aio-superset
 license: Apache-2.0
 foundation: Apache
 homepage: https://superset.apache.org
-version: 0.22.8
-previousVersion: 0.22.7
+pinNote: Chart 0.22.8 / 0.22.7 both ship Superset 6.1.0; 0.22.8 only marks the chart deprecated in favour of the new
+  Superset Kubernetes operator (plan a move when the operator is released and pinnable). Image apache/superset:6.1.0-dev
+  (official) because the lean 6.1.0 image has no PostgreSQL driver and no Authlib. The init job is an Argo CD Sync
+  hook and is idempotent.

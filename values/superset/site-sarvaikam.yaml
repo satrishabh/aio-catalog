@@ -1,0 +1,51 @@
+# Site overrides for sarvaikam.com: Superset at https://superset.tools.sarvaikam.com with Keycloak login (realm aio).
+# Needs Secret superset/superset-oidc (key OIDC_CLIENT_SECRET), written by setup/superset-secrets.sh with
+# OIDC_CLIENT_SECRET set (the secret of Keycloak client aio-superset).
+#
+# Redirect URI: https://superset.tools.sarvaikam.com/oauth-authorized/keycloak
+# Keycloak client roles of aio-superset (flat "groups" claim in userinfo) map to Superset roles at every login:
+#   aio-admin -> Admin, aio-business -> Gamma (dashboards and charts on datasets they are granted; an Admin grants
+#   dataset access with extra roles); anyone else gets role Public (no access).
+envFromSecrets:
+  - superset-oidc
+
+configOverrides:
+  oidc: |
+    from flask_appbuilder.security.manager import AUTH_OAUTH
+
+    AUTH_TYPE = AUTH_OAUTH
+    AUTH_USER_REGISTRATION = True
+    AUTH_USER_REGISTRATION_ROLE = "Public"
+    AUTH_ROLES_SYNC_AT_LOGIN = True
+    AUTH_ROLES_MAPPING = {"aio-admin": ["Admin"], "aio-business": ["Gamma"]}
+    SESSION_COOKIE_SECURE = True
+
+    _ISSUER = "https://profile.sarvaikam.com/realms/aio"
+    OAUTH_PROVIDERS = [
+        {
+            "name": "keycloak",
+            "icon": "fa-key",
+            "token_key": "access_token",
+            "remote_app": {
+                "client_id": "aio-superset",
+                "client_secret": os.environ.get("OIDC_CLIENT_SECRET", ""),
+                "server_metadata_url": _ISSUER + "/.well-known/openid-configuration",
+                "api_base_url": _ISSUER + "/protocol/",
+                "client_kwargs": {"scope": "openid email profile", "code_challenge_method": "S256"},
+            },
+        }
+    ]
+
+ingress:
+  enabled: true
+  ingressClassName: aio-azure
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-azure
+  path: /
+  pathType: Prefix
+  hosts:
+    - superset.tools.sarvaikam.com
+  tls:
+    - secretName: superset-tools-tls
+      hosts:
+        - superset.tools.sarvaikam.com

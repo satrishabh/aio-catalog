@@ -1,13 +1,45 @@
 id: langfuse
 name: Langfuse
 category: AI
-kind: planned
+kind: managed
 phase: '6'
-description: 'LLM observability: traces, cost and quality of the AIO assistant and app AI features.'
+description: 'LLM observability: traces, cost, latency and quality scores of the AIO assistant and app AI features,
+  plus prompt management and evaluations. Langfuse web and worker with small in-namespace stores: PostgreSQL on
+  CloudNativePG, one ClickHouse node, Valkey and SeaweedFS (S3); no Bitnami images. Keycloak login with a site overlay.'
+namespace: langfuse
+deployment: langfuse-web
 chartRepo: https://langfuse.github.io/langfuse-k8s
 chart: langfuse
+version: 2.2.3
+previousVersion: 2.2.1
+releaseName: langfuse
+valuesPath: values/langfuse/values.yaml
+siteValues:
+  sarvaikam: values/langfuse/site-sarvaikam.yaml
+extrasPath: extras/langfuse
+requires:
+- cloudnative-pg
+accessHint: 'Run setup/langfuse-secrets.sh (aio-catalog) before Enable (with a site overlay: LANGFUSE_ADMIN_EMAIL=<admin
+  e-mail in Keycloak> OIDC_CLIENT_SECRET=<aio-langfuse secret>). With a site overlay: https://langfuse.<tools domain>
+  (sarvaikam: langfuse.tools.sarvaikam.com, Keycloak login; admins add users to the AIO organisation). Otherwise kubectl
+  -n langfuse port-forward svc/langfuse-web 3000:3000 and log in with keys admin-email / admin-password of Secret
+  langfuse/langfuse-secrets. Apps send traces to http://langfuse-web.langfuse.svc:3000 with keys project-public-key
+  / project-secret-key of that Secret.'
+probes:
+- name: Langfuse API
+  url: http://langfuse-web.langfuse.svc:3000/api/public/health
+  expect: '"status":"OK"'
+- name: Langfuse database reachable
+  url: http://langfuse-web.langfuse.svc:3000/api/public/health?failIfDatabaseUnavailable=true
+  expect: '"status":"OK"'
+sso:
+  mode: oidc
+  clientId: aio-langfuse
 license: MIT
 foundation: Independent
 homepage: https://langfuse.com
-version: 2.2.1
-previousVersion: 2.2.0
+pinNote: Images docker.langfuse.com/langfuse/langfuse and langfuse-worker (the project's registry), valkey/valkey 8.0.12
+  (chart's Valkey sub-chart), clickhouse/clickhouse-server 26.8.36.3 and chrislusf/seaweedfs 4.23 (extras; keep both
+  aligned with the tags the pinned chart uses). The chart's ClickHouse (needs the alpha ClickHouse operator and a
+  Keeper), PostgreSQL and SeaweedFS (renders new random SFTP passwords on every render) are not used. Rendering
+  needs a Helm newer than 3.16 (the bundled SeaweedFS sub-chart uses fromToml even when unused; 3.19 verified).

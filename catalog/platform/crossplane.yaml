@@ -1,13 +1,31 @@
 id: crossplane
 name: Crossplane
 category: Platform
-kind: planned
+kind: managed
 phase: '6'
-description: Cloud resources (databases, buckets) as Kubernetes resources, on any cloud.
+description: 'Cloud resources (databases, buckets, queues) as Kubernetes resources, on any cloud. Installs Crossplane
+  core only: no provider and no cloud access until an admin runs the setup script for the cluster''s cloud, which
+  adds the provider family with keyless identity (AKS Workload ID, GKE Workload Identity) limited to a resource
+  group / roles the admin chooses.'
+namespace: crossplane-system
+deployment: crossplane
 chartRepo: https://charts.crossplane.io/stable
 chart: crossplane
+version: 2.4.3
+previousVersion: 2.4.2
+releaseName: crossplane
+valuesPath: values/crossplane/values.yaml
+extrasPath: extras/crossplane
+accessHint: 'After Enable: bash setup/crossplane-setup-azure.sh (AKS) or GCP_ROLES="..." bash setup/crossplane-setup-gcp.sh
+  (GKE); add resource providers with PROVIDERS="storage ...". Check: kubectl get providers,clusterproviderconfigs -A;
+  kubectl get managed -A'
+probes:
+- name: Package manager running
+  url: http://crossplane-metrics.crossplane-system.svc:8080/metrics
+  expect: 'controller_runtime_reconcile_total{controller="packages/provider.pkg.crossplane.io"'
 license: Apache-2.0
 foundation: CNCF (graduated)
 homepage: https://crossplane.io
-version: 2.4.3
-previousVersion: 2.4.2
+pinNote: Chart index rewrites every created date (all 2026-11-18); 2.4.3 was released 2026-10-22 and 2.4.2 on
+  2026-09-22 (GitHub releases v2.4.3, v2.4.2), checked 2026-11-20. Setup scripts pin provider-family-azure v2.8.0
+  and provider-family-gcp v3.1.0 (crossplane-contrib, released 2026-10-08).

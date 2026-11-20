@@ -1,10 +1,14 @@
 id: podman
 name: Podman / Buildah (CI step)
 category: CI/CD
-kind: planned
+kind: core
 phase: '6'
-description: Daemonless, rootless container builds. A possible third build strategy next to Kaniko and Buildpacks
-  in the CI pipeline, not a service.
+namespace: tekton-pipelines
+deployment: tekton-pipelines-controller
+description: 'Daemonless, rootless image builds with Buildah 1.43.5: a third build strategy ("buildah") in the
+  build-image step of the AIO CI pipeline, next to BuildKit (Dockerfile) and Cloud Native Buildpacks. Not a
+  service, so its status is the Tekton controller''s. Off until phase 6 is switched on (Connectors -> Phases);
+  then a project can choose "Dockerfile with Buildah" under Settings -> Build strategy. Auto never picks it.'
 license: Apache-2.0
 foundation: Independent (Red Hat, containers project)
-homepage: https://podman.io
+homepage: https://buildah.io

@@ -1,0 +1,91 @@
+# Dependency-Track values for the "dependency-track" connector (chart 2.9.0 / Dependency-Track 5.2.1; rollback target
+# 2.8.0 / 5.2.0). Installed by the AIO portal through Argo CD (app connector-dependency-track, namespace dependency-track).
+#
+# Keeps an inventory of every project's components from the CycloneDX SBOMs that AIO's CI already produces, mirrors
+# public vulnerability data (NVD, plus GitHub/OSV if enabled in the UI) and flags new CVEs and policy violations per
+# project. Installs one API server (monolith: API, background work and schema migrations in one pod), the web
+# frontend, a 2 Gi disk for uploaded BOMs, and PostgreSQL on CloudNativePG (extras/dependency-track, so the
+# "cloudnative-pg" connector is required). Images: docker.io/dependencytrack/{apiserver,frontend} (official).
+#
+# Memory: the API server is a JVM. The image sizes the heap at 80% of the container limit; here it is pinned to
+# -Xmx1g (the smallest heap the project considers workable: "below 1 GB an instance is unlikely to sustain any
+# meaningful load") inside a 1.5 Gi limit, leaving ~512 Mi for metaspace, threads and buffers. If it is OOM-killed
+# or slow during the nightly NVD mirror or on large BOMs, raise the limit and -Xmx together (2.5 Gi / 2g).
+#
+# Before Enable, run setup/dependency-track-secrets.sh once: it creates Secret dependency-track-kek (key "kek", the
+# key that encrypts secrets DT stores in its database; never replace it, or stored credentials become unreadable).
+# The database login comes from Secret dependency-track-db-app, created by CloudNativePG.
+# After Enable, once the API server is up, run the script again: it replaces the built-in admin/admin password
+# (kept in Secret dependency-track-admin), creates a read-only team "Viewers" and maps the Keycloak roles
+# aio-admin -> Administrators and aio-business -> Viewers.
+#
+# How projects upload SBOMs (AIO itself is not changed by this connector):
+#   1. In DT: Administration -> Access Management -> Service Accounts (or Teams -> "Automation"), create an API key
+#      with BOM_UPLOAD and PROJECT_CREATION_UPLOAD.
+#   2. Store it next to the pipeline that uploads, e.g. kubectl -n <ci-namespace> create secret generic
+#      dependency-track-api-key --from-file=key=<file-with-key>   (never in Git).
+#   3. After the CycloneDX step, the pipeline posts the SBOM:
+#        curl -sSf -X POST http://dependency-track-api-server.dependency-track.svc:8080/api/v1/bom \
+#          -H "X-Api-Key: $(cat /secrets/dependency-track/key)" -F projectName=<app> -F projectVersion=<git sha or tag> \
+#          -F autoCreate=true -F isLatest=true -F bom=@bom.cdx.json
+#      (from outside the cluster use https://dependency-track.<tools domain>/api/v1/bom). The answer carries a token;
+#      poll /api/v1/event/token/<token> until "COMPLETED" to gate a build on the findings.
+#
+# Without a site overlay the UI is in-cluster only (port-forward both Services, see accessHint). A site overlay adds
+# the HTTPS ingress (/api -> API server, / -> frontend) and Keycloak login (site-<site>.yaml).
+
+database:
+  jdbcUrl: "jdbc:postgresql://dependency-track-db-rw.dependency-track.svc:5432/dtrack?reWriteBatchedInserts=true"
+  existingSecret:
+    name: dependency-track-db-app      # CloudNativePG: keys username, password
+    usernameKey: username
+    passwordKey: password
+
+secretManagement:
+  provider: database
+  database:
+    kek:
+      mode: config
+      existingSecret:
+        name: dependency-track-kek     # setup/dependency-track-secrets.sh
+        key: kek
+
+fileStorage:
+  provider: local
+  local:
+    size: 2Gi                          # uploaded BOMs waiting to be processed; data lives in PostgreSQL
+
+apiServer:
+  topology: monolith
+  initializer:
+    enabled: false                     # migrations run in the pod at start (no Argo CD hook Job on every sync)
+  web:
+    replicaCount: 1
+    resources:
+      requests: { cpu: 250m, memory: 1280Mi }
+      limits: { memory: 1536Mi }
+    extraEnv:
+      - name: EXTRA_JAVA_OPTIONS       # appended to the image's JAVA_OPTIONS; -Xmx overrides MaxRAMPercentage=80
+        value: "-Xmx1g"
+      - name: DT_DATASOURCE_POOL_MAX_SIZE
+        value: "20"                    # default 30; one small instance on a 100-connection database
+      - name: DT_DATASOURCE_POOL_MIN_IDLE
+        value: "5"                     # default 15 idle connections, each a PostgreSQL backend
+
+frontend:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 128Mi }
+  # The browser calls the API directly and the frontend does not proxy /api. Without an ingress that is the API
+  # server's port-forward (accessHint); the site overlay sets "" (same host, /api routed by the ingress).
+  apiBaseUrl: http://localhost:8080
+  extraEnv:
+    - name: OIDC_FLOW                  # the entrypoint writes every OIDC_* variable into config.json; unset ones become null
+      value: code
+    - name: OIDC_SCOPE
+      value: "openid profile email"
+
+ingress:
+  enabled: false

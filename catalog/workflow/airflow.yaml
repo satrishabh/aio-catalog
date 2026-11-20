@@ -1,16 +1,41 @@
 id: airflow
 name: Apache Airflow
 category: Workflow
-kind: planned
+kind: managed
 phase: '6'
-description: Data and batch workflows as Python DAGs.
+description: Data and batch workflows as Python DAGs (Airflow 3) with a web UI, REST API and Keycloak login. Sized
+  for a small cluster with the LocalExecutor (tasks run in the scheduler pod, up to 4 at a time; no Celery, Redis or pod per task),
+  metadata database on CloudNativePG, task logs on a 2 Gi disk. DAGs come from a Git repository the admin sets
+  (git-sync, off until configured).
+namespace: airflow
+deployment: airflow-api-server
 chartRepo: https://airflow.apache.org
 chart: airflow
+version: 1.22.0
+previousVersion: 1.21.0
+releaseName: airflow
+valuesPath: values/airflow/values.yaml
+siteValues:
+  sarvaikam: values/airflow/site-sarvaikam.yaml
+extrasPath: extras/airflow
+requires:
+- cloudnative-pg
+accessHint: 'Run setup/airflow-secrets.sh (aio-catalog) before Enable. With a site overlay: https://airflow.<tools domain>
+  (sarvaikam: airflow.tools.sarvaikam.com, Keycloak login). Otherwise kubectl -n airflow port-forward svc/airflow-api-server
+  8080:8080 and sign in as admin; password: kubectl -n airflow get secret airflow-secrets -o jsonpath=''{.data.admin-password}''
+  | base64 -d. DAGs: set dags.gitSync (repo, branch, subPath) in values/airflow (see its header).'
+probes:
+- name: Airflow API and metadata database
+  url: http://airflow-api-server.airflow.svc:8080/api/v2/monitor/health
+  expect: '"metadatabase":{"status":"healthy"}'
+- name: Scheduler heartbeat
+  url: http://airflow-api-server.airflow.svc:8080/api/v2/monitor/health
+  expect: '"scheduler":{"status":"healthy"'
 sso:
   mode: oidc
   clientId: aio-airflow
 license: Apache-2.0
 foundation: Apache
 homepage: https://airflow.apache.org
-version: 1.22.0
-previousVersion: 1.21.0
+pinNote: Chart 1.22.0 ships Airflow 3.2.2 (1.21.0 ships 3.2.0). Images are apache/airflow from Docker Hub, the
+  project's official image. The migration and create-user jobs run as Argo CD Sync hooks and are idempotent.

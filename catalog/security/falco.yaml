@@ -1,13 +1,29 @@
 id: falco
 name: Falco
 category: Security
-kind: planned
+kind: managed
 phase: '6'
-description: Runtime threat detection from kernel events.
+description: Runtime threat detection from kernel events (shell in a container, reads of sensitive files, unexpected
+  network tools, privilege escalation) on every node, spot nodes included. Modern eBPF probe, so no kernel headers or
+  driver downloads on AKS, GKE COS, EKS or on-prem; default Falco rules; alerts as JSON in the pod logs (Loki).
+namespace: falco
 chartRepo: https://falcosecurity.github.io/charts
 chart: falco
+version: 9.2.2
+previousVersion: 9.2.1
+releaseName: falco
+valuesPath: values/falco/values.yaml
+accessHint: 'Alerts: Grafana -> Explore -> Loki, {namespace="falco"} |= "priority", or kubectl -n falco logs ds/falco
+  -c falco. Nodes need Linux >= 5.8 with BTF (all current AKS/GKE/EKS images); not GKE Autopilot.'
+probes:
+- name: Falco engine running
+  url: http://falco-http.falco.svc:8765/healthz
+  expect: ok
+- name: Falco rules and engine loaded
+  url: http://falco-http.falco.svc:8765/versions
+  expect: engine_version
 license: Apache-2.0
 foundation: CNCF (graduated)
 homepage: https://falco.org
-version: 9.2.2
-previousVersion: 9.2.1
+pinNote: Images from docker.io/falcosecurity (falco, falcoctl); falcoctl downloads the falco-rules:5 ruleset and the
+  container plugin from the falcosecurity index / ghcr.io/falcosecurity at pod start, so nodes need outbound HTTPS.

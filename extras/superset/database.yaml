@@ -1,0 +1,23 @@
+# Superset's metadata database, run by the CloudNativePG operator (connector "cloudnative-pg").
+# The operator creates Secret superset-db-app (keys username, password: read by Superset as DB_USER / DB_PASS)
+# and the Service superset-db-rw. Nightly Velero backups (phase 3) copy its volume.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: superset-db
+  namespace: superset
+spec:
+  instances: 1
+  storage:
+    size: 2Gi
+  resources:
+    requests: { cpu: 30m, memory: 160Mi }
+    limits: { memory: 512Mi }
+  postgresql:
+    parameters:
+      shared_buffers: 64MB
+      max_connections: "50"
+  bootstrap:
+    initdb:
+      database: superset
+      owner: superset

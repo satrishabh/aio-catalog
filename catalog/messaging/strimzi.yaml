@@ -1,13 +1,27 @@
 id: strimzi
 name: Apache Kafka (Strimzi)
 category: Messaging
-kind: planned
+kind: managed
 phase: '6'
-description: Apache Kafka clusters, topics and users as Kubernetes resources.
+description: 'Kafka operator for apps: an app gets its own KRaft Kafka cluster, topics and users from small
+  Kafka, KafkaNodePool and KafkaTopic manifests in its namespace. Installs only the cluster operator (watches all
+  namespaces); no Kafka cluster runs until an app declares one. Any cloud: data on disks from the default
+  StorageClass.'
+namespace: strimzi
+deployment: strimzi-cluster-operator
 chartRepo: https://strimzi.io/charts/
 chart: strimzi-kafka-operator
+version: 1.3.1
+previousVersion: 1.3.0
+releaseName: strimzi
+valuesPath: values/strimzi/values.yaml
+extrasPath: extras/strimzi
+accessHint: 'kubectl get kafka,kafkanodepool,kafkatopic -A. A Kafka cluster for an app: see the single-node KRaft
+  example in values/strimzi/values.yaml (aio-catalog); the app connects to <cluster>-kafka-bootstrap.<ns>.svc:9092.'
+probes:
+- name: Operator reconciling Kafka resources
+  url: http://strimzi-cluster-operator-metrics.strimzi.svc:8080/metrics
+  expect: 'strimzi_reconciliations_periodical_total{kind="Kafka"'
 license: Apache-2.0
 foundation: CNCF (incubating) / Apache Kafka
 homepage: https://strimzi.io
-version: 1.3.0
-previousVersion: 1.2.0

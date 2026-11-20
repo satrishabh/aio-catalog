@@ -1,16 +1,33 @@
 id: appsmith
 name: Appsmith
 category: Developer
-kind: planned
+kind: managed
 phase: '6'
-description: Low-code internal tools and admin panels on top of your databases and APIs.
+description: 'Low-code internal tools and admin panels on top of your databases and APIs (Community Edition, Apache-2.0).
+  One pod with one 5 Gi disk: MongoDB and Redis run inside the Appsmith container, so there is no extra database to
+  run. Any cloud. Appsmith accounts with form login; on a site the UI sits behind the AIO SSO gate.'
+namespace: appsmith
 chartRepo: https://helm.appsmith.com
 chart: appsmith
+version: 3.9.1
+previousVersion: 3.9.0
+releaseName: appsmith
+valuesPath: values/appsmith/values.yaml
+siteValues:
+  sarvaikam: values/appsmith/site-sarvaikam.yaml
+accessHint: 'Run setup/appsmith-secrets.sh (aio-catalog) before Enable. First start takes a few minutes. With a site
+  overlay: https://appsmith.<tools domain> (sarvaikam: appsmith.tools.sarvaikam.com, behind the SSO gate). Otherwise
+  kubectl -n appsmith port-forward svc/appsmith 8080:80 (then open http://localhost:8080). The first account created
+  becomes the Appsmith administrator; then turn off sign-up in Admin Settings.'
+probes:
+- name: Appsmith API (server, MongoDB and Redis)
+  url: http://appsmith.appsmith.svc/api/v1/health
+  expect: All systems are up
 sso:
-  mode: oidc
-  clientId: aio-appsmith
+  mode: proxy
 license: Apache-2.0
 foundation: Independent (Appsmith)
 homepage: https://www.appsmith.com
-version: 3.9.1
-previousVersion: 3.9.0
+pinNote: 'Image appsmith/appsmith-ce v2.6.0 (Docker Hub, the project''s registry): the Apache-2.0 Community Edition; the
+  chart''s default is the commercial appsmith-ee image at tag latest. Move the image tag with the chart. Appsmith runs
+  as a StatefulSet (no Deployment to check). OIDC login is a paid-edition feature, hence sso.mode proxy.'
