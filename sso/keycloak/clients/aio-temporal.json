@@ -1,6 +1,6 @@
 {
-  "clientId": "aio-appsmith",
-  "name": "Appsmith (AIO managed)",
+  "clientId": "aio-temporal",
+  "name": "Temporal (AIO managed)",
   "protocol": "openid-connect",
   "publicClient": false,
   "standardFlowEnabled": true,
@@ -8,14 +8,14 @@
   "implicitFlowEnabled": false,
   "serviceAccountsEnabled": false,
   "redirectUris": [
-    "https://appsmith.tools.sarvaikam.com/login/oauth2/code/oidc"
+    "https://temporal.tools.sarvaikam.com/auth/sso/callback"
   ],
   "webOrigins": [
-    "https://appsmith.tools.sarvaikam.com"
+    "https://temporal.tools.sarvaikam.com"
   ],
   "attributes": {
-    "pkce.code.challenge.method": "S256",
-    "post.logout.redirect.uris": "https://appsmith.tools.sarvaikam.com/*"
+    "pkce.code.challenge.method": "",
+    "post.logout.redirect.uris": "https://temporal.tools.sarvaikam.com/*"
   },
   "defaultClientScopes": [
     "openid",

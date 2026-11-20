@@ -10,51 +10,109 @@ spec:
     aio-catalog)
   sourceRepos:
   - https://github.com/satrishabh/aio-catalog.git
+  - https://SonarSource.github.io/helm-chart-sonarqube
+  - https://airflow.apache.org
+  - https://apache.github.io/camel-k/charts
+  - https://apache.github.io/superset
   - https://aquasecurity.github.io/helm-charts/
   - https://bedag.github.io/helm-charts
+  - https://charts.apiseven.com
+  - https://charts.crossplane.io/stable
   - https://charts.external-secrets.io
   - https://charts.fairwinds.com/stable
+  - https://charts.pingcap.com
+  - https://charts.selectdb.com
   - https://cloudnative-pg.github.io/charts
   - https://crowdsecurity.github.io/helm-charts
+  - https://dapr.github.io/helm-charts/
+  - https://dependencytrack.github.io/helm-charts
+  - https://dl.gitea.com/charts/
   - https://docs.renovatebot.com/helm-charts
+  - https://downloads.apache.org/flink/flink-kubernetes-operator-1.16.1/
+  - https://falcosecurity.github.io/charts
+  - https://go.temporal.io/helm-charts
   - https://grafana-community.github.io/helm-charts
   - https://grafana.github.io/helm-charts
+  - https://helm.appsmith.com
+  - https://helm.erpnext.com
   - https://helm.goharbor.io
+  - https://jitsi-contrib.github.io/jitsi-helm
   - https://kedacore.github.io/charts
   - https://kube-green.github.io/helm-charts/
+  - https://kubeflow.github.io/spark-operator
   - https://kubernetes-sigs.github.io/descheduler/
+  - https://langfuse.github.io/langfuse-k8s
   - https://oauth2-proxy.github.io/manifests
   - https://open-telemetry.github.io/opentelemetry-helm-charts
+  - https://openbao.github.io/openbao-helm
   - https://opencost.github.io/opencost-helm-chart
+  - https://openkruise.github.io/charts/
+  - https://opensearch-project.github.io/opensearch-k8s-operator
   - https://prometheus-community.github.io/helm-charts
+  - https://pulsar.apache.org/charts
+  - https://strimzi.io/charts/
   - https://twin.github.io/helm-charts
   - https://valkey.io/valkey-helm
   - https://vmware-tanzu.github.io/helm-charts
+  - https://volcano-sh.github.io/helm-charts
+  - https://zilliztech.github.io/milvus-helm/
   destinations:
+  - server: https://kubernetes.default.svc
+    namespace: airflow
+  - server: https://kubernetes.default.svc
+    namespace: apisix
+  - server: https://kubernetes.default.svc
+    namespace: appsmith
+  - server: https://kubernetes.default.svc
+    namespace: camel-k
   - server: https://kubernetes.default.svc
     namespace: cnpg-system
   - server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  - server: https://kubernetes.default.svc
     namespace: crowdsec
+  - server: https://kubernetes.default.svc
+    namespace: dapr-system
+  - server: https://kubernetes.default.svc
+    namespace: dependency-track
   - server: https://kubernetes.default.svc
     namespace: descheduler
   - server: https://kubernetes.default.svc
     namespace: dev
   - server: https://kubernetes.default.svc
+    namespace: doris
+  - server: https://kubernetes.default.svc
+    namespace: erpnext
+  - server: https://kubernetes.default.svc
     namespace: external-secrets
   - server: https://kubernetes.default.svc
+    namespace: falco
+  - server: https://kubernetes.default.svc
+    namespace: flink-operator
+  - server: https://kubernetes.default.svc
     namespace: gatus
+  - server: https://kubernetes.default.svc
+    namespace: gitea
   - server: https://kubernetes.default.svc
     namespace: goldilocks
   - server: https://kubernetes.default.svc
     namespace: harbor
   - server: https://kubernetes.default.svc
+    namespace: jitsi-meet
+  - server: https://kubernetes.default.svc
     namespace: keda
+  - server: https://kubernetes.default.svc
+    namespace: kruise-system
   - server: https://kubernetes.default.svc
     namespace: kube-green
   - server: https://kubernetes.default.svc
     namespace: kube-system
   - server: https://kubernetes.default.svc
+    namespace: langfuse
+  - server: https://kubernetes.default.svc
     namespace: loki
+  - server: https://kubernetes.default.svc
+    namespace: milvus
   - server: https://kubernetes.default.svc
     namespace: monitoring
   - server: https://kubernetes.default.svc
@@ -62,21 +120,41 @@ spec:
   - server: https://kubernetes.default.svc
     namespace: oauth2-proxy
   - server: https://kubernetes.default.svc
+    namespace: openbao
+  - server: https://kubernetes.default.svc
     namespace: opencost
+  - server: https://kubernetes.default.svc
+    namespace: opensearch-operator
   - server: https://kubernetes.default.svc
     namespace: opentelemetry
   - server: https://kubernetes.default.svc
+    namespace: pulsar
+  - server: https://kubernetes.default.svc
     namespace: renovate
+  - server: https://kubernetes.default.svc
+    namespace: sonarqube
+  - server: https://kubernetes.default.svc
+    namespace: spark-operator
   - server: https://kubernetes.default.svc
     namespace: staging
   - server: https://kubernetes.default.svc
+    namespace: strimzi
+  - server: https://kubernetes.default.svc
+    namespace: superset
+  - server: https://kubernetes.default.svc
     namespace: tempo
+  - server: https://kubernetes.default.svc
+    namespace: temporal
+  - server: https://kubernetes.default.svc
+    namespace: tidb-admin
   - server: https://kubernetes.default.svc
     namespace: trivy-system
   - server: https://kubernetes.default.svc
     namespace: valkey
   - server: https://kubernetes.default.svc
     namespace: velero
+  - server: https://kubernetes.default.svc
+    namespace: volcano-system
   clusterResourceWhitelist:
   - group: '*'
     kind: '*'

@@ -1,9 +1,43 @@
 id: temporal
 name: Temporal
 category: Workflow
-kind: planned
+kind: managed
 phase: '7'
-description: Durable workflow execution for long-running business processes.
+description: Durable workflow execution for long-running business processes, written as code with the Temporal SDKs
+  (Go, Java, TypeScript, Python, .NET). One pod each of frontend, history, matching and worker plus the Web UI; default
+  and visibility stores on CloudNativePG (no Cassandra or Elasticsearch). Apps connect to
+  temporal-frontend.temporal.svc:7233, namespace "default". Web UI with Keycloak login on a site overlay.
+namespace: temporal
+deployment: temporal-frontend
+chartRepo: https://go.temporal.io/helm-charts
+chart: temporal
+version: 1.8.0
+previousVersion: 1.7.0
+releaseName: temporal
+valuesPath: values/temporal/values.yaml
+siteValues:
+  sarvaikam: values/temporal/site-sarvaikam.yaml
+extrasPath: extras/temporal
+requires:
+- cloudnative-pg
+accessHint: 'Apps: temporal-frontend.temporal.svc:7233 (gRPC), namespace default. With a site overlay: run
+  setup/temporal-secrets.sh with OIDC_CLIENT_SECRET (aio-catalog) before Enable; UI at https://temporal.<tools domain>
+  (sarvaikam: temporal.tools.sarvaikam.com, SSO gate + Keycloak login, aio-admin only). Otherwise kubectl -n temporal
+  port-forward svc/temporal-web 8080:8080 (no login). CLI: kubectl -n temporal exec deploy/temporal-admintools --
+  temporal operator namespace list'
+probes:
+- name: Temporal frontend API and namespace default
+  url: http://temporal-frontend.temporal.svc:7243/api/v1/namespaces/default
+  expect: namespaceInfo
+- name: Temporal Web UI
+  url: http://temporal-web.temporal.svc:8080/healthz
+  expect: OK
+sso:
+  mode: oidc
+  clientId: aio-temporal
 license: MIT
 foundation: Independent (Temporal Technologies)
 homepage: https://temporal.io
+pinNote: Chart 1.8.0 ships server 1.32.2 and UI 2.56.1 (1.7.0 ships 1.32.0 / 2.54.1); official temporalio/* images
+  from Docker Hub. numHistoryShards is 16 and can never change after the first start. Schema and namespace jobs are
+  Argo CD Sync hooks and idempotent; on a chart upgrade the schema job updates the schema while the servers roll.

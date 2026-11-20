@@ -1,16 +1,43 @@
 id: dependency-track
 name: OWASP Dependency-Track
 category: Security
-kind: planned
+kind: managed
 phase: '6'
-description: Tracks the SBOMs AIO already produces and alerts on new CVEs per project.
+description: Component inventory and vulnerability tracking from the CycloneDX SBOMs AIO's CI already produces;
+  flags new CVEs and policy violations per project and version. Any cloud; one API server (1 GiB heap) and the
+  web UI, database on CloudNativePG, Keycloak login on a site overlay.
+namespace: dependency-track
+deployment: dependency-track-api-server
 chartRepo: https://dependencytrack.github.io/helm-charts
 chart: dependency-track
+version: 2.9.0
+previousVersion: 2.8.0
+releaseName: dependency-track
+valuesPath: values/dependency-track/values.yaml
+siteValues:
+  sarvaikam: values/dependency-track/site-sarvaikam.yaml
+extrasPath: extras/dependency-track
+requires:
+- cloudnative-pg
+accessHint: 'Run setup/dependency-track-secrets.sh before Enable, and again once the API server is ready (sets the
+  admin password and the SSO teams). With a site overlay: https://dependency-track.<tools domain> (sarvaikam:
+  dependency-track.tools.sarvaikam.com). Otherwise kubectl -n dependency-track port-forward svc/dependency-track-frontend
+  8081:8080 and svc/dependency-track-api-server 8080:8080, then http://localhost:8081. Admin password: kubectl -n
+  dependency-track get secret dependency-track-admin -o jsonpath=''{.data.password}'' | base64 -d. CI uploads SBOMs
+  to http://dependency-track-api-server.dependency-track.svc:8080/api/v1/bom with an API key (see the values file)'
+probes:
+- name: Dependency-Track API
+  url: http://dependency-track-api-server.dependency-track.svc:8080/api/version
+  expect: Dependency-Track
+- name: API server healthy (database, workers)
+  url: http://dependency-track-api-server-metrics.dependency-track.svc:9000/health/ready
+  expect: '"status":"UP"'
+- name: Web UI
+  url: http://dependency-track-frontend.dependency-track.svc:8080/static/config.json
+  expect: API_BASE_URL
 sso:
   mode: oidc
   clientId: aio-dependency-track
 license: Apache-2.0
 foundation: OWASP
 homepage: https://dependencytrack.org
-version: 2.9.0
-previousVersion: 2.8.0

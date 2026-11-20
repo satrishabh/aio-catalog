@@ -1,0 +1,72 @@
+# Falco values for the "falco" connector (chart 9.2.2 / Falco 0.45.2; rollback target 9.2.1 / 0.45.1).
+# Installed by the AIO portal through Argo CD (app connector-falco, namespace falco).
+#
+# Runtime threat detection: one Falco pod per node (DaemonSet, also on tainted spot/system nodes) watches syscalls
+# with the modern eBPF probe (CO-RE, built into Falco: no kernel headers, no driver download, no kernel module), so
+# it runs as is on AKS (Ubuntu/Azure Linux), GKE Container-Optimized OS, EKS (AL2023/Bottlerocket) and on-prem
+# kernels >= 5.8. GKE Autopilot is not supported (privileged pods). The pod is privileged, as eBPF needs.
+#
+# Rules: the default falcosecurity ruleset (falco-rules:5), installed at pod start by the falcoctl init container
+# from the official falcosecurity index (with the "container" plugin that adds pod/container names to events).
+# Automatic rule updates (the falcoctl "follow" sidecar) are off: rules change only with the chart version.
+# Custom or tuned rules go in customRules (values) when needed.
+#
+# Alerts: written as JSON to each pod's log (kubectl -n falco logs ds/falco -c falco), so Loki (phase 4) collects
+# them: in Grafana, {namespace="falco"} |= "priority". Falcosidekick (forwarding to Slack, webhooks, ...) is off.
+# No secrets, no setup script. The embedded webserver (port 8765) serves /healthz and /versions for the probes.
+driver:
+  enabled: true
+  kind: modern_ebpf
+  modernEbpf:
+    leastPrivileged: false             # true needs CAP_PERFMON/BPF support that not every node image grants
+  loader:
+    enabled: false                     # modern_ebpf ships inside Falco; the driver-loader init container is not used
+
+tolerations:
+  - operator: Exists                   # every node, whatever its taints (spot, system pools, control plane)
+
+resources:
+  requests: { cpu: 50m, memory: 192Mi }
+  limits: { memory: 512Mi }            # no CPU limit: throttling Falco drops kernel events
+
+collectors:
+  enabled: true
+  containerEngine:
+    enabled: true                      # container/pod metadata on each alert
+  kubernetes:
+    enabled: false                     # k8s-metacollector (an extra Deployment) not needed for the default rules
+
+falcoctl:
+  artifact:
+    install:
+      enabled: true
+      resources:
+        requests: { cpu: 10m, memory: 32Mi }
+        limits: { memory: 128Mi }
+    follow:
+      enabled: false
+
+falcosidekick:
+  enabled: false
+
+metrics:
+  enabled: false
+
+# A Service in front of the webserver for the AIO probes (it reaches one of the DaemonSet pods).
+services:
+  - name: http
+    type: ClusterIP
+    ports:
+      - name: http
+        port: 8765
+        targetPort: 8765
+        protocol: TCP
+
+falco:
+  json_output: true
+  json_include_output_property: true
+  webserver:
+    enabled: true
+    listen_port: 8765
+    k8s_healthz_endpoint: /healthz
+    prometheus_metrics_enabled: false

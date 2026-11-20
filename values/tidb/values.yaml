@@ -1,0 +1,73 @@
+# TiDB Operator values for the "tidb" connector (chart tidb-operator v1.6.6 / operator v1.6.6; rollback target v1.6.5).
+# Installed by the AIO portal through Argo CD (app connector-tidb, namespace tidb-admin).
+#
+# Chart source: https://charts.pingcap.com (PingCAP's own Helm repository; the old charts.pingcap.org name no longer
+# resolves). TiDB Operator v1.6 is the line published there. TiDB Operator v2 is only published as an OCI chart
+# (us-docker.pkg.dev/pingcap-public/charts), which this catalog does not accept (chartRepo must be https).
+#
+# Installs only tidb-controller-manager (watches every namespace). The chart has no CRDs: the 10 pingcap.com CRDs
+# (TidbCluster, Backup, Restore, ... ~2.9 MB) are synced from extras/tidb/crds.yaml with server-side apply and are
+# kept when the connector is removed. Off: tidb-scheduler, advanced-statefulset controller, admission webhook (so no
+# webhook intercepts any pod or namespace). No secrets or setup script.
+#
+# HEAVY: a TiDB cluster is PD (placement/metadata, etcd-based) + TiKV (storage, Raft) + TiDB (stateless SQL).
+# PingCAP's production minimum is several CPUs and 8-16 GiB per component; the smallest dev cluster below (1 of each,
+# TiKV block cache squeezed to 512 MiB) still requests about 1.2 CPU and 2.6 GiB memory (limits 4.5 GiB) plus
+# 12 GiB of disk. It does not fit the nearly full 2 x (2 vCPU, 8 GiB) reference cluster without adding a node.
+# Example (not deployed by this connector):
+#
+#   apiVersion: pingcap.com/v1alpha1
+#   kind: TidbCluster
+#   metadata: { name: shop-tidb, namespace: dev }
+#   spec:
+#     version: v8.5.8                       # TiDB 8.5 LTS; Docker Hub pingcap/pd, pingcap/tikv, pingcap/tidb
+#     timezone: UTC
+#     pvReclaimPolicy: Retain
+#     configUpdateStrategy: RollingUpdate
+#     discovery:
+#       requests: { cpu: 10m, memory: 32Mi }
+#       limits: { memory: 128Mi }
+#     pd:
+#       baseImage: pingcap/pd
+#       replicas: 1                         # 3 in prod
+#       maxFailoverCount: 0
+#       requests: { cpu: 200m, memory: 512Mi, storage: 2Gi }    # storage from the default StorageClass
+#       limits: { memory: 1Gi }
+#       config: {}
+#     tikv:
+#       baseImage: pingcap/tikv
+#       replicas: 1                         # 3 in prod (Raft replicas; PD's max-replicas follows)
+#       maxFailoverCount: 0
+#       requests: { cpu: 500m, memory: 1536Mi, storage: 10Gi }
+#       limits: { memory: 2Gi }
+#       config:
+#         storage:
+#           reserve-space: "0MB"
+#           block-cache: { capacity: "512MiB" }
+#     tidb:
+#       baseImage: pingcap/tidb
+#       replicas: 1                         # 2+ in prod (stateless)
+#       maxFailoverCount: 0
+#       service: { type: ClusterIP }
+#       requests: { cpu: 500m, memory: 512Mi }
+#       limits: { memory: 1536Mi }
+#       config: {}
+#
+# Apps connect with any MySQL client/driver to shop-tidb-tidb.dev.svc:4000 (user root, empty password at first: set
+# one at once, e.g. with a TidbInitializer whose passwordSecret is created by the app's own setup). Backups: Velero
+# (phase 3) copies the volumes; consistent TiDB backups need the Backup CRD with object storage (BR), not set up here.
+controllerManager:
+  replicas: 1
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }   # chart default 80m / 50Mi has no limit
+    limits: { memory: 512Mi }
+  autoFailover: true
+
+scheduler:
+  create: false                 # default scheduler is fine; tidb-scheduler is optional and deprecated upstream
+
+advancedStatefulset:
+  create: false
+
+admissionWebhook:
+  create: false

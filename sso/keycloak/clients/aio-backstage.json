@@ -14,7 +14,7 @@
     "https://backstage.tools.sarvaikam.com"
   ],
   "attributes": {
-    "pkce.code.challenge.method": "S256",
+    "pkce.code.challenge.method": "",
     "post.logout.redirect.uris": "https://backstage.tools.sarvaikam.com/*"
   },
   "defaultClientScopes": [

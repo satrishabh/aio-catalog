@@ -1,0 +1,23 @@
+# Plain-HTTP Service for tidb-controller-manager's metrics port (:6060 /metrics), so the AIO connector Test can check
+# that the operator holds its leader lease and started its controllers (the tidbcluster controller metrics appear
+# only then). The chart ships no Service for the controller manager. Note: the same port also serves Go pprof
+# (/debug/pprof) inside the cluster; only this ClusterIP Service exposes it, nothing outside the cluster.
+apiVersion: v1
+kind: Service
+metadata:
+  name: tidb-controller-manager-metrics
+  namespace: tidb-admin
+  labels:
+    app.kubernetes.io/name: tidb-operator
+    app.kubernetes.io/component: metrics
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tidb-operator
+    app.kubernetes.io/instance: tidb-operator
+    app.kubernetes.io/component: controller-manager
+  ports:
+    - name: metrics
+      port: 6060
+      targetPort: 6060
+      protocol: TCP

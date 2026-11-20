@@ -1,0 +1,20 @@
+# Plain-HTTP Service for the cluster operator's health/metrics port (8080: /healthy, /ready, /metrics), so the AIO
+# connector Test can check that the operator reconciles. The chart ships no Service for the operator.
+apiVersion: v1
+kind: Service
+metadata:
+  name: strimzi-cluster-operator-metrics
+  namespace: strimzi
+  labels:
+    app: strimzi
+    app.kubernetes.io/component: metrics
+spec:
+  type: ClusterIP
+  selector:
+    name: strimzi-cluster-operator
+    strimzi.io/kind: cluster-operator
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP

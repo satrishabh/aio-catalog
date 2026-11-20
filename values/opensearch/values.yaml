@@ -1,0 +1,113 @@
+# OpenSearch Kubernetes Operator values for the "opensearch" connector (chart opensearch-operator 3.0.14 / operator
+# 3.0.0; rollback target chart 3.0.12 / operator 3.0.0-beta). Installed by the AIO portal through Argo CD
+# (app connector-opensearch, namespace opensearch-operator).
+#
+# Installs only the operator, its CRDs (API opensearch.org/v1: OpenSearchCluster, OpenSearchUser, OpenSearchRole,
+# OpenSearchUserRoleBinding, OpenSearchIndexTemplate, OpenSearchISMPolicy, ...; the deprecated opensearch.opster.io
+# API is off) and a validating webhook for those kinds only (certificate from cert-manager). It watches every
+# namespace; no OpenSearch cluster runs until an app declares one.
+#
+# What it is for: full-text search inside apps (product/catalogue/document search with relevance, facets,
+# autocomplete, aggregations, k-NN vector search). Platform logs stay in Loki (phase 4): Loki indexes labels only and
+# is cheap for logs, OpenSearch indexes every field and costs ~1 GiB memory per node, so it is not a log store here.
+#
+# Smallest cluster for an app (example: app "shop", namespace dev; not deployed by this connector):
+#
+#   1. Admin password (once, before applying the cluster; never in Git):
+#        bash setup/opensearch-cluster-secrets.sh dev shop-search
+#      -> Secret dev/shop-search-admin-credentials (username admin, random password). Without it the operator would
+#         generate one itself; either way the operator hashes it into the security config and sets
+#         OPENSEARCH_INITIAL_ADMIN_PASSWORD, so no demo users, demo certificates or "admin/admin" ever exist.
+#   2. Manifests:
+#
+#   apiVersion: cert-manager.io/v1          # a per-cluster CA kept by cert-manager (core)
+#   kind: Issuer
+#   metadata: { name: shop-search-selfsigned, namespace: dev }
+#   spec: { selfSigned: {} }
+#   ---
+#   apiVersion: cert-manager.io/v1
+#   kind: Certificate
+#   metadata: { name: shop-search-ca, namespace: dev }
+#   spec:
+#     isCA: true
+#     commonName: shop-search-ca
+#     secretName: shop-search-ca            # apps trust this CA (key ca.crt / tls.crt) for https://shop-search.dev.svc:9200
+#     duration: 87600h                      # 10 years
+#     privateKey: { algorithm: RSA, size: 2048 }
+#     issuerRef: { name: shop-search-selfsigned, kind: Issuer }
+#   ---
+#   apiVersion: opensearch.org/v1
+#   kind: OpenSearchCluster
+#   metadata: { name: shop-search, namespace: dev }
+#   spec:
+#     general:
+#       serviceName: shop-search
+#       version: "3.9.0"                    # image docker.io/opensearchproject/opensearch:3.9.0
+#       httpPort: 9200
+#       setVMMaxMapCount: false             # no privileged sysctl init container on the nodes (see below)
+#       additionalConfig:
+#         node.store.allow_mmap: "false"    # NIO instead of mmap: the vm.max_map_count check does not apply
+#       podSecurityContext: { runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000, runAsNonRoot: true }
+#       securityContext: { allowPrivilegeEscalation: false }
+#     bootstrap:                            # temporary pod while the cluster forms, deleted afterwards
+#       resources:
+#         requests: { cpu: 100m, memory: 768Mi }
+#         limits: { memory: 768Mi }
+#     nodePools:
+#       - component: nodes
+#         replicas: 1                       # 3 in prod (and 3 cluster_manager-eligible nodes)
+#         diskSize: 5Gi                     # default StorageClass
+#         roles: [cluster_manager, data]
+#         resources:                        # the operator sets the JVM heap to half the memory request
+#           requests: { cpu: 250m, memory: 1Gi }
+#           limits: { memory: 1Gi }
+#     security:
+#       config:
+#         adminCredentialsSecret: { name: shop-search-admin-credentials }
+#       tls:                                # node and HTTP certificates signed by the cert-manager CA above,
+#         transport:                        # issued and renewed by the operator (TLS hot reload on 3.x)
+#           generate: true
+#           perNode: true
+#           caSecret: { name: shop-search-ca }
+#         http:
+#           generate: true
+#           caSecret: { name: shop-search-ca }
+#     dashboards:
+#       enable: false                       # true adds OpenSearch Dashboards (~512 Mi) for this cluster
+#
+# The app connects to https://shop-search.dev.svc:9200, trusting ca.crt from Secret shop-search-ca, with its own
+# user (OpenSearchUser + OpenSearchRole + OpenSearchUserRoleBinding in the same namespace, password from a Secret),
+# not with admin. A single node reports health "yellow" for indices with replicas: create indices with
+# number_of_replicas: 0 (or an OpenSearchIndexTemplate) in dev. Backups: Velero (phase 3) copies the volume, or
+# OpenSearch snapshots (general.snapshotRepositories) to object storage.
+#
+# vm.max_map_count: OpenSearch refuses to start when this kernel setting is < 262144 and mmap is enabled. The operator
+# would fix it with a privileged init container (setVMMaxMapCount, default true), i.e. root on the node. The example
+# turns that off and disables mmap (node.store.allow_mmap: false), which removes the check with no node change;
+# the cost is somewhat slower search on large indices. Big production clusters should instead get a node pool with
+# vm.max_map_count=262144 (AKS: custom node config linuxOSConfig.sysctls; GKE: --system-config-from-file;
+# EKS: launch template user data) and turn mmap back on.
+# The chown init container (busybox:latest) is skipped as well (SKIP_INIT_CONTAINER below); fsGroup makes the disk
+# writable instead, so cluster pods use only the official opensearchproject images.
+
+manager:
+  image:
+    repository: opensearchproject/opensearch-operator   # tag = chart appVersion (3.0.0)
+    pullPolicy: IfNotPresent
+  resources:
+    requests: { cpu: 50m, memory: 192Mi }
+    limits: { memory: 512Mi }
+  extraEnv:
+    - name: SKIP_INIT_CONTAINER    # no root busybox:latest chown init container in OpenSearch pods (fsGroup instead)
+      value: "true"
+  watchNamespace:                  # empty: all namespaces (apps create clusters in their own namespaces)
+
+installCRDs: true
+legacyAPI:
+  enabled: false                   # new install: only the opensearch.org API group, no opensearch.opster.io CRDs
+
+webhook:
+  enabled: true                    # validates only the operator's own kinds (OpenSearchCluster, ...), not pods
+  failurePolicy: Fail              # a down operator blocks only changes to OpenSearch resources
+  certManager:
+    enabled: true                  # self-signed Issuer + Certificate in this namespace (cert-manager is core)

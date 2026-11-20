@@ -1,0 +1,53 @@
+# Site overrides for sarvaikam.com: Gitea at https://gitea.tools.sarvaikam.com with Keycloak login (realm aio).
+# Needs Secret gitea/gitea-oidc (keys key, secret), written by setup/gitea-secrets.sh with OIDC_CLIENT_SECRET set
+# (the secret of Keycloak client aio-gitea). The init container creates or updates auth source "aio" at every start.
+#
+# Redirect URI: https://gitea.tools.sarvaikam.com/user/oauth2/aio/callback
+# Keycloak client roles of aio-gitea arrive as a flat "groups" claim and are re-applied at every login:
+#   aio-admin -> Gitea site admin; aio-business -> restricted user (sees only orgs/teams they are added to);
+#   users without either role cannot sign in (required claim "groups"). New users are created on first login
+#   with their Keycloak user name. Git over HTTPS: use an access token (User settings -> Applications).
+ingress:
+  enabled: true
+  className: aio-azure
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-azure
+  hosts:
+    - host: gitea.tools.sarvaikam.com
+      paths:
+        - path: /
+  tls:
+    - secretName: gitea-tools-tls
+      hosts:
+        - gitea.tools.sarvaikam.com
+
+gitea:
+  config:
+    server:
+      DOMAIN: gitea.tools.sarvaikam.com
+      ROOT_URL: https://gitea.tools.sarvaikam.com/
+    service:
+      DISABLE_REGISTRATION: false      # needed for sign-up through Keycloak ...
+      ALLOW_ONLY_EXTERNAL_REGISTRATION: true   # ... and only through Keycloak
+      SHOW_REGISTRATION_BUTTON: false
+    oauth2_client:
+      ENABLE_AUTO_REGISTRATION: true
+      USERNAME: preferred_username
+      ACCOUNT_LINKING: login
+      UPDATE_AVATAR: false
+    openid:
+      ENABLE_OPENID_SIGNIN: false
+      ENABLE_OPENID_SIGNUP: false
+    session:
+      COOKIE_SECURE: true
+
+  oauth:
+    - name: aio                        # part of the callback path /user/oauth2/aio/callback
+      provider: openidConnect
+      existingSecret: gitea-oidc       # keys key (client id), secret
+      autoDiscoverUrl: https://profile.sarvaikam.com/realms/aio/.well-known/openid-configuration
+      scopes: openid,profile,email        # comma list: the CLI flag is a string slice
+      groupClaimName: groups
+      adminGroup: aio-admin
+      restrictedGroup: aio-business
+      requiredClaimName: groups

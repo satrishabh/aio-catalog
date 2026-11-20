@@ -1,0 +1,117 @@
+# Milvus values for the "milvus" connector (chart 5.0.33 / Milvus 3.0.5; rollback target 5.0.32 / 3.0.4).
+# Installed by the AIO portal through Argo CD (app connector-milvus, namespace milvus).
+#
+# Vector database for semantic search (AIO assistant: code, docs, logs). Milvus standalone: ONE pod, everything on
+# one disk from the default StorageClass, the same layout as Milvus' own standalone_embed.sh:
+#   metadata  embedded etcd inside the Milvus process (/var/lib/milvus/etcd, listens on 127.0.0.1 only)
+#   data      local storage (/var/lib/milvus/data) instead of MinIO/S3
+#   WAL       embedded Woodpecker on local storage (/var/lib/milvus/wp) instead of Pulsar/Kafka
+# So no etcd, MinIO, Pulsar or Kafka pods, and no Bitnami images. Attu (web UI) is off. One pod cannot be scaled
+# out: for large collections or HA, move to cluster mode with external etcd and S3.
+#
+# Auth is on. Before Enable, run setup/milvus-secrets.sh once: it creates Secret milvus-root (key password); Milvus
+# sets it as the root password at first start (the default root password "Milvus" is never used). Changing the
+# Secret later does not change the password: use the SDK's update_password / UpdateCredential.
+# The admin endpoints on the metrics port (9091: /management, /log/level, /debug/pprof, web console) need the root
+# login too; /healthz and /metrics stay open for probes and Prometheus.
+#
+# Apps: gRPC and REST on milvus.milvus.svc:19530 (e.g. pymilvus MilvusClient(uri="http://milvus.milvus.svc:19530",
+# token="root:<password>")). Create a user per app with its own role rather than sharing root.
+cluster:
+  enabled: false                               # standalone
+
+image:
+  all:
+    pullPolicy: IfNotPresent
+
+standalone:
+  messageQueue: woodpecker
+  disk:
+    enabled: false                             # no emptyDir over /var/lib/milvus/data: data must stay on the PVC
+  persistence:
+    enabled: true
+    persistentVolumeClaim:
+      size: 10Gi
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits: { memory: 2Gi }
+  # The image runs as user "milvus"; fsGroup makes the new disk writable for it.
+  securityContext:
+    fsGroup: 1000
+    fsGroupChangePolicy: OnRootMismatch
+  extraEnv:
+    - name: ETCD_USE_EMBED
+      value: "true"
+    - name: ETCD_DATA_DIR
+      value: /var/lib/milvus/etcd
+    - name: ETCD_CONFIG_PATH
+      value: /milvus/configs/embedEtcd.yaml
+    - name: COMMON_STORAGETYPE
+      value: local
+    - name: COMMON_SECURITY_DEFAULTROOTPASSWORD
+      valueFrom:
+        secretKeyRef: { name: milvus-root, key: password }
+
+streaming:
+  woodpecker:
+    embedded: true
+    storage:
+      type: local
+
+# Mounted into the standalone pod (volume milvus-config = the chart's ConfigMap).
+volumeMounts:
+  - name: milvus-config
+    mountPath: /milvus/configs/embedEtcd.yaml
+    subPath: embedEtcd.yaml
+    readOnly: true
+
+extraConfigFiles:
+  user.yaml: |+
+    etcd:
+      endpoints: 127.0.0.1:2379
+      use:
+        embed: true
+    common:
+      storageType: local
+      security:
+        authorizationEnabled: true
+        adminAuthEnabled: true
+    localStorage:
+      path: /var/lib/milvus/data/
+  embedEtcd.yaml: |+
+    listen-client-urls: http://127.0.0.1:2379
+    advertise-client-urls: http://127.0.0.1:2379
+    quota-backend-bytes: 4294967296
+    auto-compaction-mode: revision
+    auto-compaction-retention: '1000'
+
+# The bundled stores are not used (see header).
+etcd:
+  enabled: false
+  replicaCount: 1                              # only shapes the (overridden) endpoint list in default.yaml
+minio:
+  enabled: false
+  accessKey: ""                                # the chart writes these into its ConfigMap even when unused
+  secretKey: ""
+  tls:
+    enabled: false                             # read by the chart's config template even when MinIO is off
+pulsar:
+  enabled: false
+pulsarv3:
+  enabled: false
+kafka:
+  enabled: false
+woodpecker:
+  enabled: false                               # the separate Woodpecker service (cluster mode); standalone embeds it
+attu:
+  enabled: false
+tei:
+  enabled: false
+
+metrics:
+  enabled: true                                # keeps port 9091 (/healthz, /metrics) on the Service
+  serviceMonitor:
+    enabled: false                             # turn on when Prometheus is enabled
+
+log:
+  level: warn

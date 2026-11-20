@@ -41,7 +41,7 @@ Release: merge to `main`, tag `vYYYY.MM.N`, and move `CONNECTORS_REVISION` to th
 
 ## Scope and schedule
 
-78 tools: 9 core, 20 managed, 49 planned. See `dist/catalog.yaml`, and [POLICY.md](POLICY.md) for the license and supply-chain rules (OSI-approved only; Apache, CNCF and Chinese-origin projects held to the same bar).
+78 tools: 10 core, 46 managed, 22 planned. See `dist/catalog.yaml`, and [POLICY.md](POLICY.md) for the license and supply-chain rules (OSI-approved only; Apache, CNCF and Chinese-origin projects held to the same bar).
 
 Each wave is gated on cluster capacity. Add the AKS spot node pool before wave 5.
 
@@ -50,8 +50,8 @@ Each wave is gated on cluster capacity. Add the AKS spot node pool before wave 5
 | 1-3 | 2026-11-17 → 12-19 | Prometheus + Grafana; Trivy Operator, OpenCost, Goldilocks, kube-green; Velero, Renovate, KEDA, Descheduler |
 | 4 | 2026-12-21 → 2027-01-08 | **SSO**: oauth2-proxy gate + Keycloak clients; Grafana and Argo CD on Keycloak. **Managed (catalog `phase: 4`)**: node autoprovisioning (AKS, GKE), Loki, Tempo, OpenTelemetry Collector, External Secrets Operator, Gatus; activation in AIO `docs/architecture/CONNECTORS.md` |
 | 5 | 2027-01 | CrowdSec + edge protection (optional, see below; live on sarvaikam). **Managed (catalog `phase: 5`)**: CloudNativePG, Valkey, Harbor (database on CloudNativePG, secrets from `setup/harbor-secrets.sh`). **Core**: Biome as the CI `lint` step (AIO `tekton/tasks/lint-biome.yaml`). Karpenter when AIO runs on EKS. Activation in AIO `docs/architecture/CONNECTORS.md` |
-| 6 | 2027-02 | Apache: Kafka (Strimzi), Airflow, Superset, APISIX. Cloud native: Dragonfly, Koordinator, OpenKruise, Crossplane. AI: Milvus, Langfuse. Low-code: Appsmith. Podman/Buildah as a CI build option |
-| 7 | 2027-03 onwards | Pulsar, Spark, Flink, Doris, TiDB, ShardingSphere, SkyWalking, HertzBeat, DolphinScheduler, Higress, Nacos, Seata, Volcano, Karmada, KubeEdge, Dapr, Temporal, Camel K, Backstage, Gitea, SonarQube, Answer, OpenSearch, Jaeger, Falco, Dependency-Track, OpenBao, vLLM, Jitsi Meet, OpenNMS, MediaWiki, Odoo Community (POS), ERPNext, SuiteCRM, GitLab CE |
+| 6 | 2027-02 | **Managed (catalog `phase: 6`)**: Strimzi (Kafka operator), Crossplane (+ `setup/crossplane-setup-azure.sh` / `-gcp.sh`), OpenKruise; Dependency-Track, Falco, OpenBao (`setup/openbao-init.sh`); Airflow, Superset (databases on CloudNativePG); Appsmith (Community Edition, behind the SSO gate), APISIX (standalone, routes in Git); Milvus (standalone), Langfuse. Every setup step is in `setup/<id>-*.sh`. **Core**: Podman / Buildah as a CI build strategy (AIO `tekton/tasks/build-image.yaml`). **Stay planned**: Dragonfly and Koordinator (both change every node; little gain on 2 nodes), Jaeger (Grafana + Tempo already cover it). Phase 6 needs about 2.1 CPU and 9.5 GiB of requests, more than the 2-node reference cluster has free: enable one at a time. Activation in AIO `docs/architecture/CONNECTORS.md` |
+| 7 | 2027-03 onwards | **Managed (catalog `phase: 7`)**: Gitea, SonarQube (Community Build, behind the SSO gate); Dapr, Temporal, Camel K, Volcano; operators for Spark, Flink, OpenSearch, TiDB and Doris (apps create their own clusters), Pulsar standalone; ERPNext (MariaDB on the official image), Jitsi Meet (group calls need a UDP load balancer: sarvaikam overlay). Setup steps in `setup/<id>-*.sh`. **Stay planned**: Odoo, SuiteCRM, MediaWiki, Answer, DolphinScheduler (no official https Helm chart), ShardingSphere (unmaintained), Backstage and GitLab CE (would replace AIO parts), SkyWalking, HertzBeat, OpenNMS (overlap the observability stack), Nacos, Seata, Higress, Karmada, KubeEdge (niche here), vLLM (GPU). Phase 7 needs about 1.9 CPU and 8.5 GiB. Activation in AIO `docs/architecture/CONNECTORS.md` |
 
 A tool moves from planned to managed by pull request, following POLICY.md.
 

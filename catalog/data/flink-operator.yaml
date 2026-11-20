@@ -1,9 +1,35 @@
 id: flink-operator
 name: Apache Flink Kubernetes Operator
 category: Data
-kind: planned
+kind: managed
 phase: '7'
-description: Stream processing jobs managed as Kubernetes resources.
+description: 'Stream (and batch) processing jobs as Kubernetes resources: an app declares a FlinkDeployment (its own
+  Flink cluster running one job) or a FlinkSessionJob in dev or staging, and the operator deploys, upgrades,
+  savepoints and restarts it. Installs only the operator and its webhook; no Flink cluster runs until an app
+  declares one. Jobs use the official Apache Flink images. Any cloud.'
+requires:
+- cert-manager
+namespace: flink-operator
+deployment: flink-kubernetes-operator
+chartRepo: https://downloads.apache.org/flink/flink-kubernetes-operator-1.16.1/
+chart: flink-kubernetes-operator
+version: 1.16.1
+releaseName: flink-operator
+valuesPath: values/flink-operator/values.yaml
+extrasPath: extras/flink-operator
+accessHint: 'kubectl get flinkdeployments,flinksessionjobs -n dev (or staging). A job for an app: see the example in
+  values/flink-operator/values.yaml (aio-catalog); JobManagers run as ServiceAccount flink. Flink UI: kubectl -n dev
+  port-forward svc/<deployment>-rest 8081.'
+probes:
+- name: Operator healthy (informers running)
+  url: http://flink-operator-health.flink-operator.svc:8085/
+  expect: OK
 license: Apache-2.0
 foundation: Apache
-homepage: https://flink.apache.org
+homepage: https://nightlies.apache.org/flink/flink-kubernetes-operator-docs-stable/
+pinNote: Apache publishes one Helm repository per operator release, so chartRepo is version-specific and there is no
+  previousVersion in the same repository (Roll back is unavailable; 1.15.0 lives at
+  .../flink-kubernetes-operator-1.15.0/ and renders with the same values). Move chartRepo and version together, and
+  switch to archive.apache.org/dist/flink/ if Apache drops 1.16.1 from downloads.apache.org. The image tag is the
+  release commit (ghcr.io/apache/flink-kubernetes-operator:1c895a3) as pinned by the chart. Jobs are allowed in dev
+  and staging only; the chart writes Roles and the flink ServiceAccount there (tools/build.py EXTRA_NAMESPACES).

@@ -1,0 +1,45 @@
+# Site overrides for sarvaikam.com: Temporal Web UI at https://temporal.tools.sarvaikam.com with Keycloak login
+# (realm aio, client aio-temporal). Needs Secret temporal/temporal-oidc (key TEMPORAL_AUTH_CLIENT_SECRET), written by
+# setup/temporal-secrets.sh with OIDC_CLIENT_SECRET set; the web pod does not start without it.
+#
+# Redirect URI: https://temporal.tools.sarvaikam.com/auth/sso/callback
+# The Temporal UI has no roles of its own: everyone who signs in can see and act on every workflow (cancel,
+# terminate, reset, signal, start). So the ingress also sits behind the AIO SSO gate (oauth2-proxy, enable it first),
+# which lets only users with client role aio-admin through; aio-business users get no access (Temporal cannot
+# offer them a read-only view without a server-side authorizer, which would also force JWTs on every app worker).
+# The gRPC frontend (apps, temporal CLI) is not exposed outside the cluster.
+web:
+  ingress:
+    enabled: true
+    className: aio-azure
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-azure
+      traefik.ingress.kubernetes.io/router.middlewares: aio-ingress-sso@kubernetescrd
+    hosts:
+      - temporal.tools.sarvaikam.com
+    tls:
+      - secretName: temporal-tools-tls
+        hosts:
+          - temporal.tools.sarvaikam.com
+  additionalEnvSecretName: temporal-oidc        # TEMPORAL_AUTH_CLIENT_SECRET
+  additionalEnv:
+    - name: TEMPORAL_DISABLE_NEWS_FETCH
+      value: "true"
+    - name: TEMPORAL_AUTH_ENABLED
+      value: "true"
+    - name: TEMPORAL_AUTH_TYPE
+      value: oidc
+    - name: TEMPORAL_AUTH_LABEL
+      value: AIO
+    - name: TEMPORAL_AUTH_PROVIDER_URL
+      value: https://profile.sarvaikam.com/realms/aio
+    - name: TEMPORAL_AUTH_CLIENT_ID
+      value: aio-temporal
+    - name: TEMPORAL_AUTH_CALLBACK_URL
+      value: https://temporal.tools.sarvaikam.com/auth/sso/callback
+    - name: TEMPORAL_AUTH_SCOPES
+      value: openid,profile,email
+    - name: TEMPORAL_AUTH_REDIRECT_TO_PROVIDER
+      value: "true"                                # straight to Keycloak, no extra login button
+    - name: TEMPORAL_CORS_ORIGINS
+      value: https://temporal.tools.sarvaikam.com

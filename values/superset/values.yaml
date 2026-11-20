@@ -1,0 +1,159 @@
+# Apache Superset values for the "superset" connector (chart 0.22.8 / Superset 6.1.0; rollback target 0.22.7).
+# Installed by the AIO portal through Argo CD (app connector-superset, namespace superset).
+#
+# BI dashboards and SQL exploration, sized for a small cluster: one web pod (gunicorn), no Celery worker, beat,
+# Redis, websocket or MCP server. Queries run synchronously in the web pod; caches and filter state live in the
+# metadata database (Superset's defaults without Redis). The metadata database is a CloudNativePG cluster
+# (extras/superset, so the "cloudnative-pg" connector is required); the chart's Bitnami PostgreSQL and Redis
+# subcharts are off.
+#
+# Image: apache/superset:6.1.0-dev, the project's official build that includes the PostgreSQL driver (psycopg2)
+# and Authlib (Keycloak login). The plain 6.1.0 ("lean") image has neither and would have to pip-install them from
+# PyPI at every pod start.
+#
+# Before Enable, run setup/superset-secrets.sh once. Every secret comes from:
+#   Secret superset-secrets: SUPERSET_SECRET_KEY (signs sessions, encrypts stored database passwords: never change
+#                            it), SUPERSET_ADMIN_PASSWORD (UI user "admin", created by the init job)
+#   Secret superset-db-app:  created by CloudNativePG (keys username, password)
+#
+# The init job (db upgrade, init, admin user) is an Argo CD Sync hook, not a Helm hook (a post-install hook would
+# become a PostSync hook). It is safe to rerun: migrations and "superset init" are idempotent and the admin user
+# is only created when it is missing.
+#
+# Data sources: add them in the UI (Settings -> Database connections). Drivers in the image: PostgreSQL, MySQL;
+# others need a custom image.
+image:
+  repository: apache/superset
+  tag: 6.1.0-dev
+  pullPolicy: IfNotPresent
+
+runAsUser: 1000                        # user "superset" of the image (the chart default is root)
+
+# The chart's env Secret would hold DB_PASS ("superset" by default); ours comes from Secrets instead.
+secretEnv:
+  create: false
+envFromSecret: superset-secrets        # SUPERSET_SECRET_KEY, SUPERSET_ADMIN_PASSWORD
+extraEnvRaw:
+  - name: DB_HOST
+    value: superset-db-rw.superset.svc
+  - name: DB_PORT
+    value: "5432"
+  - name: DB_NAME
+    value: superset
+  - name: DB_USER
+    valueFrom:
+      secretKeyRef: { name: superset-db-app, key: username }
+  - name: DB_PASS
+    valueFrom:
+      secretKeyRef: { name: superset-db-app, key: password }
+  - name: SERVER_WORKER_AMOUNT        # one gunicorn worker with 20 threads (run-server.sh defaults)
+    value: "1"
+
+database:
+  host: superset-db-rw.superset.svc
+  name: superset
+  user: superset
+
+cache:
+  enabled: false                       # no Redis: Superset falls back to its metadata-database caches
+
+postgresql:
+  enabled: false
+redis:
+  enabled: false
+
+configOverrides:
+  aio: |
+    # Behind a TLS-terminating ingress (site overlay); harmless in-cluster.
+    ENABLE_PROXY_FIX = True
+    # No Celery: SQL Lab runs queries synchronously, no scheduled reports or thumbnails.
+    FEATURE_FLAGS = {"ALERT_REPORTS": False, "THUMBNAILS": False}
+
+# Wait for the CloudNativePG service with a small container (the chart's init containers request 250m CPU and
+# read DB_HOST from the chart's env Secret, which is off).
+supersetNode:
+  replicas:
+    replicaCount: 1
+  initContainers:
+    - name: wait-for-postgres
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+      imagePullPolicy: IfNotPresent
+      command:
+        - /bin/bash
+        - -c
+        - until (exec 3<>/dev/tcp/superset-db-rw.superset.svc/5432) 2>/dev/null; do echo waiting for postgres; sleep 3; done
+      resources:
+        requests: { cpu: 10m, memory: 32Mi }
+        limits: { memory: 128Mi }
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits: { memory: 1536Mi }
+  startupProbe:
+    httpGet: { path: /health, port: http }
+    initialDelaySeconds: 15
+    timeoutSeconds: 3
+    failureThreshold: 60
+    periodSeconds: 5
+  livenessProbe:
+    httpGet: { path: /health, port: http }
+    initialDelaySeconds: 15
+    timeoutSeconds: 3
+    failureThreshold: 3
+    periodSeconds: 15
+  readinessProbe:
+    httpGet: { path: /health, port: http }
+    initialDelaySeconds: 15
+    timeoutSeconds: 3
+    failureThreshold: 3
+    periodSeconds: 15
+
+supersetWorker:
+  replicas:
+    enabled: true
+    replicaCount: 0                    # the chart always renders the worker Deployment; no Celery here
+  initContainers: []
+  livenessProbe: {}
+  resources:
+    requests: { cpu: 10m, memory: 64Mi }
+    limits: { memory: 1Gi }
+supersetCeleryBeat:
+  enabled: false
+supersetCeleryFlower:
+  enabled: false
+supersetWebsockets:
+  enabled: false
+supersetMcp:
+  enabled: false
+
+init:
+  enabled: true
+  jobAnnotations:
+    "helm.sh/hook": null
+    "helm.sh/hook-delete-policy": null
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  loadExamples: false
+  createAdmin: false                   # the chart would put the password in its init script; done below instead
+  command:
+    - /bin/sh
+    - -c
+    - >-
+      . {{ .Values.configMountPath }}/superset_bootstrap.sh;
+      . {{ .Values.configMountPath }}/superset_init.sh;
+      if superset fab list-users 2>/dev/null | grep -qF 'username:admin'; then echo "admin exists, kept";
+      else superset fab create-admin --username admin --firstname Superset --lastname Admin
+      --email admin@superset.local --password "$SUPERSET_ADMIN_PASSWORD"; fi
+  initContainers:
+    - name: wait-for-postgres
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+      imagePullPolicy: IfNotPresent
+      command:
+        - /bin/bash
+        - -c
+        - until (exec 3<>/dev/tcp/superset-db-rw.superset.svc/5432) 2>/dev/null; do echo waiting for postgres; sleep 3; done
+      resources:
+        requests: { cpu: 10m, memory: 32Mi }
+        limits: { memory: 128Mi }
+  resources:
+    requests: { cpu: 100m, memory: 512Mi }
+    limits: { memory: 1536Mi }

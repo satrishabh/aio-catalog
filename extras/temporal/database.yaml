@@ -1,0 +1,46 @@
+# Temporal's PostgreSQL, run by the CloudNativePG operator (connector "cloudnative-pg").
+# Database "temporal" (default store, owner temporal) from initdb; database "temporal_visibility" (visibility store,
+# same owner, extension btree_gin) from the Database resource below. The operator creates Secret temporal-db-app
+# (username temporal, key "password") that Temporal reads, and the Service temporal-db-rw.
+# Wave -1: Argo CD creates the database before the schema job and the Temporal servers (wave 0).
+# Nightly Velero backups (phase 3) copy its volume.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: temporal-db
+  namespace: temporal
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  instances: 1
+  storage:
+    size: 5Gi
+  resources:
+    requests: { cpu: 30m, memory: 160Mi }
+    limits: { memory: 512Mi }
+  postgresql:
+    parameters:
+      shared_buffers: 64MB
+      max_connections: "100"    # 4 Temporal services x (10 default + 5 visibility) plus the jobs
+  bootstrap:
+    initdb:
+      database: temporal
+      owner: temporal
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: temporal-visibility
+  namespace: temporal
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  cluster:
+    name: temporal-db
+  name: temporal_visibility
+  owner: temporal
+  ensure: present
+  databaseReclaimPolicy: retain   # deleting this resource never drops the data
+  extensions:
+    - name: btree_gin             # the visibility schema needs it; created by the operator as superuser
+      ensure: present

@@ -1,0 +1,41 @@
+# Apache Camel K values for the "camel-k" connector (chart 2.11.0 / Camel K 2.11.0; rollback target 2.10.2).
+# Installed by the AIO portal through Argo CD (app connector-camel-k, namespace camel-k).
+#
+# Installs the Camel K operator and its CRDs only (Integration, Pipe, Kamelet, IntegrationKit, Build, ...),
+# watching all namespaces, one replica. On start the operator adds the bundled Kamelet catalog (300+ connectors) to
+# namespace camel-k. Image docker.io/apache/camel-k (the Apache project's image). Needs egress to Maven Central to
+# build integrations.
+#
+# Container registry (off by default). Camel K builds each integration into an image and pushes it to a registry
+# that the nodes can pull from; there is no cloud-agnostic default (an in-cluster *.svc registry cannot be pulled by
+# the kubelet), so none is configured here and the operator starts without one. Two ways to use it:
+#   1. No registry: run integrations from images the AIO pipeline already built (Integration with
+#      spec.traits.container.image, or "kamel run --image"). Nothing is built in the cluster.
+#   2. Builds in the cluster: after Enable run setup/camel-k-registry.sh (aio-catalog) with a registry the nodes
+#      reach over HTTPS: the Harbor connector's public host name (e.g. harbor.tools.sarvaikam.com, project camel-k,
+#      robot account with push/pull), ACR, Artifact Registry or ECR. It creates the push Secret camel-k/camel-k-registry
+#      and the IntegrationPlatform camel-k/camel-k that points the operator at it. (Chart 2.11 hard-codes empty
+#      REGISTRY_* env vars, so the registry cannot be set through these values; the IntegrationPlatform is deprecated
+#      in 2.11 but still read.) App namespaces need a pull Secret for that registry (or a public-read project).
+# Builds: strategy "routine" (Maven runs inside the operator pod, one build at a time here) and publish strategy
+# Jib: no privileged or root containers, no Docker/Buildah daemon. The memory limit below covers one JVM build;
+# idle the operator uses about 100 Mi.
+#
+# Example integration (namespace dev), from a pre-built image or built by the operator:
+#   apiVersion: camel.apache.org/v1
+#   kind: Pipe
+#   metadata: { name: tick-to-log, namespace: dev }
+#   spec:
+#     source: { ref: { kind: Kamelet, apiVersion: camel.apache.org/v1, name: timer-source }, properties: { message: hi } }
+#     sink:   { ref: { kind: Kamelet, apiVersion: camel.apache.org/v1, name: log-sink } }
+operator:
+  global: "true"                 # watch Integrations/Pipes in every namespace
+  logLevel: info
+  resources:
+    requests: { cpu: 50m, memory: 192Mi }
+    limits: { memory: 1536Mi }
+  extraEnv:                      # "env" is newer but missing in the 2.10 rollback chart
+    - name: MAX_RUNNING_BUILDS   # one Maven build at a time inside the operator pod
+      value: "1"
+    - name: MAVEN_OPTS           # keep the build JVM inside the container limit
+      value: "-Xmx768m -XX:+UseSerialGC"

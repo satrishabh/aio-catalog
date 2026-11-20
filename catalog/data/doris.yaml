@@ -1,9 +1,32 @@
 id: doris
 name: Apache Doris
 category: Data
-kind: planned
+kind: managed
 phase: '7'
-description: Real-time analytics database (MPP, MySQL protocol).
+description: 'Real-time analytics database (MPP, MySQL protocol) through the Apache Doris operator: an app gets its
+  own Doris cluster (FE + BE) from one DorisCluster manifest in its namespace. Installs only the operator and its
+  CRDs; no Doris cluster runs until an app declares one. HEAVY: the smallest cluster needs about 8 CPU / 16 GiB (FE
+  and BE 4 CPU / 8 GiB each), more than the reference cluster has. Any cloud: data on disks from the default
+  StorageClass.'
+namespace: doris
+deployment: doris-operator
+chartRepo: https://charts.selectdb.com
+chart: doris-operator
+version: 25.8.0
+releaseName: doris-operator
+valuesPath: values/doris/values.yaml
+extrasPath: extras/doris
+accessHint: 'kubectl get dcr -A. A Doris cluster for an app: see the 1 FE + 1 BE example and node prerequisites in
+  values/doris/values.yaml (aio-catalog); the app connects with a MySQL client to <cluster>-fe-service.<ns>.svc:9030.'
+probes:
+- name: Operator reconciling DorisCluster resources
+  url: http://doris-operator-metrics.doris.svc:8080/metrics
+  expect: controller="doriscluster"
+pinNote: 'Chart from charts.selectdb.com (SelectDB, the Doris vendor), the repository the Apache Doris docs name
+  (doris.apache.org, Deploy Doris on Helm Chart); built from apache/doris-operator, image apache/doris:operator-25.8.0
+  (Docker Hub, Apache). No previousVersion on purpose: chart 25.7.0 hard-codes operator requests of 2 CPU / 4 GiB
+  and ignores dorisOperator.resources, so a rollback to it cannot be scheduled. Set previousVersion: 25.8.0 when the
+  next chart is pinned. The chart lags Apache releases (operator 26.0.x exists, newest chart 25.8.0).'
 license: Apache-2.0
 foundation: Apache
 origin: China (Baidu)

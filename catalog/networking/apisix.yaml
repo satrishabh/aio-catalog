@@ -1,14 +1,32 @@
 id: apisix
 name: Apache APISIX
 category: API gateway
-kind: planned
+kind: managed
 phase: '6'
-description: 'API gateway: rate limits, auth plugins, canary routing.'
+description: 'API gateway for apps in the cluster: rate limits, auth plugins, canary routing. Declarative standalone
+  mode: routes live in Git (values/apisix/values.yaml), no etcd, no Admin API, no dashboard. In-cluster only
+  (ClusterIP Service apisix-gateway); the cluster''s ingress stays the edge and APISIX adds no IngressClass.'
+namespace: apisix
+deployment: apisix
 chartRepo: https://charts.apiseven.com
 chart: apisix
+version: 2.18.2
+previousVersion: 2.18.1
+releaseName: apisix
+valuesPath: values/apisix/values.yaml
+accessHint: 'No setup needed. Gateway: http://apisix-gateway.apisix.svc (port 80) from inside the cluster; locally
+  kubectl -n apisix port-forward svc/apisix-gateway 9080:80, then curl http://localhost:9080/aio-health. Routes are
+  added in values/apisix/values.yaml (apisix.deployment.standalone.config) in aio-catalog; APISIX reloads them
+  without a restart.'
+probes:
+- name: Gateway serves a route from its config
+  url: http://apisix-gateway.apisix.svc/aio-health
+  expect: '"status":"ok"'
 license: Apache-2.0
 foundation: Apache
 origin: China (API7)
 homepage: https://apisix.apache.org
-version: 2.18.2
-previousVersion: 2.18.1
+pinNote: 'Image apache/apisix:3.19.0-ubuntu (Docker Hub, the Apache project''s registry), the chart''s appVersion.
+  Chart 2.18.1 needs apisix.deployment.role data_plane set explicitly for standalone mode (2.18.2 infers it); the
+  values set it. The bundled Bitnami etcd and the APISIX ingress controller (cluster-wide CRDs incl. Gateway API,
+  ADC sidecar from ghcr.io/api7) stay off.'

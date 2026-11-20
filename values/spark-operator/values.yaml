@@ -1,0 +1,94 @@
+# Kubeflow Spark Operator values for the "spark-operator" connector (chart 2.5.2 / operator 2.5.2; rollback target 2.5.1).
+# Installed by the AIO portal through Argo CD (app connector-spark-operator, namespace spark-operator).
+#
+# Installs only the operator: the controller, its admission webhook and the CRDs (SparkApplication,
+# ScheduledSparkApplication, SparkConnect; API sparkoperator.k8s.io). No Spark cluster runs here: each job starts its
+# own driver and executor pods in the app's namespace and they exit when the job ends.
+#
+# Job namespaces: dev and staging only (spark.jobNamespaces). The chart creates ServiceAccount spark-operator-spark
+# with a Role (pods, services, configmaps, PVCs) in each of them, the controller only watches those namespaces and the
+# webhook only answers there. To run jobs in prod, add it to spark.jobNamespaces (and to the connectors AppProject).
+#
+# Smallest example job (not deployed by this connector), in dev:
+#
+#   apiVersion: sparkoperator.k8s.io/v1beta2
+#   kind: SparkApplication
+#   metadata: { name: spark-pi, namespace: dev }
+#   spec:
+#     type: Scala
+#     mode: cluster
+#     image: docker.io/apache/spark:4.0.4     # official Apache Spark image
+#     mainClass: org.apache.spark.examples.SparkPi
+#     mainApplicationFile: local:///opt/spark/examples/jars/spark-examples.jar
+#     arguments: ["1000"]
+#     sparkVersion: 4.0.4
+#     restartPolicy: { type: Never }
+#     timeToLiveSeconds: 600                    # delete the finished app (and its pods) after 10 minutes
+#     driver:
+#       cores: 1
+#       coreRequest: 100m
+#       memory: 512m
+#       serviceAccount: spark-operator-spark    # created by this connector in dev and staging
+#       securityContext: { runAsUser: 185, runAsNonRoot: true, allowPrivilegeEscalation: false }
+#     executor:
+#       instances: 1
+#       cores: 1
+#       coreRequest: 100m
+#       memory: 512m
+#       securityContext: { runAsUser: 185, runAsNonRoot: true, allowPrivilegeEscalation: false }
+#
+# kubectl -n dev get sparkapp spark-pi shows the state; driver logs: kubectl -n dev logs spark-pi-driver.
+# Each driver/executor needs about memory + 384Mi overhead while the job runs (about 900Mi each here).
+# Recurring jobs: ScheduledSparkApplication (cron schedule + the same template).
+#
+# No secrets or setup script. The webhook makes its own serving certificate at run time (stored in Secret
+# spark-operator-webhook-certs, CA patched into its webhook configurations; caBundle diffs are ignored by Argo CD), so
+# nothing is generated per render. The cert-manager mode is not used: its templates fail when rendered without a
+# live cluster (Capabilities check), and it would only replace that run-time certificate.
+#
+# Webhooks: MutatingWebhookConfiguration and ValidatingWebhookConfiguration spark-operator-webhook. They only see
+# SparkApplication / ScheduledSparkApplication / SparkConnect objects and pods labelled
+# sparkoperator.k8s.io/launched-by-spark-operator=true, and only in dev and staging (namespaceSelector).
+# failurePolicy stays Fail: while the webhook is down only new Spark jobs in dev/staging are refused (no other pod
+# is affected), which is better than drivers starting without their volumes, tolerations or security settings.
+
+spark:
+  jobNamespaces: [dev, staging]
+  serviceAccount:
+    create: true                 # spark-operator-spark in each job namespace
+  rbac:
+    create: true
+
+controller:
+  replicas: 1
+  workers: 4
+  uiService:
+    enable: true                 # a Service per running driver for the Spark UI (port-forward to it)
+  uiIngress:
+    enable: false
+  batchScheduler:
+    enable: false
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 256Mi }
+
+webhook:
+  enable: true
+  replicas: 1
+  failurePolicy: Fail            # scoped by namespaceSelector + objectSelector, see header
+  timeoutSeconds: 10
+  resources:
+    requests: { cpu: 10m, memory: 48Mi }
+    limits: { memory: 128Mi }
+
+hook:
+  upgradeCrd: false              # Argo CD applies the CRDs from the chart (server-side apply)
+
+certManager:
+  enable: false
+
+prometheus:
+  metrics:
+    enable: true                 # :8080/metrics on controller and webhook; Service in extras/spark-operator
+  podMonitor:
+    create: false                # turn on when Prometheus is enabled

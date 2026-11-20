@@ -1,0 +1,20 @@
+# Plain-HTTP Service for the Doris operator's metrics port (controller-runtime, :8080 /metrics), so the AIO connector
+# Test can check that the operator's DorisCluster controller is running. The chart only ships the webhook Service
+# (doris-service, 443 -> 9443), which is unused (webhook disabled).
+apiVersion: v1
+kind: Service
+metadata:
+  name: doris-operator-metrics
+  namespace: doris
+  labels:
+    app.kubernetes.io/name: doris-operator
+    app.kubernetes.io/component: metrics
+spec:
+  type: ClusterIP
+  selector:
+    control-plane: doris-operator
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: 8080
+      protocol: TCP

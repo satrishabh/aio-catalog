@@ -1,14 +1,28 @@
 id: volcano
 name: Volcano
 category: Platform
-kind: planned
+kind: managed
 phase: '7'
-description: Batch and AI job scheduling (gang scheduling, queues).
+description: 'Batch and AI job scheduling: gang scheduling (all pods of a job start together or none), queues with
+  fair sharing, Volcano Jobs and CronJobs. Adds a second scheduler named volcano next to the default one, which
+  stays in charge of every other pod; only pods with schedulerName volcano use it. Webhooks act only on Volcano''s
+  own resources. Any cloud; no disks.'
+namespace: volcano-system
+deployment: volcano-scheduler
 chartRepo: https://volcano-sh.github.io/helm-charts
 chart: volcano
+version: 1.16.0
+previousVersion: 1.15.3
+releaseName: volcano
+valuesPath: values/volcano/values.yaml
+extrasPath: extras/volcano
+accessHint: 'kubectl get queues.scheduling.volcano.sh; kubectl get vcjob,podgroups -A. A job uses it with schedulerName:
+  volcano on its pods or as a Volcano Job (example in values/volcano/values.yaml, aio-catalog).'
+probes:
+- name: Scheduler running scheduling cycles
+  url: http://volcano-scheduler-service.volcano-system.svc:8080/metrics
+  expect: volcano_e2e_scheduling_latency_milliseconds_count
 license: Apache-2.0
 foundation: CNCF (incubating)
 origin: China (Huawei)
 homepage: https://volcano.sh
-version: 1.16.0
-previousVersion: 1.15.3

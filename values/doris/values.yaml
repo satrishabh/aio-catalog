@@ -1,0 +1,64 @@
+# Apache Doris operator values for the "doris" connector (chart doris-operator 25.8.0 / operator 25.8.0).
+# No rollback target: the previous chart (25.7.0) hard-codes 2 CPU / 4 GiB requests for the operator pod and ignores
+# dorisOperator.resources, so it cannot be scheduled on the reference cluster. See pinNote in catalog/data/doris.yaml.
+# Installed by the AIO portal through Argo CD (app connector-doris, namespace doris).
+#
+# Chart source: https://charts.selectdb.com (published by SelectDB, the main Doris vendor). This is the Helm repository
+# the Apache Doris docs point to (doris.apache.org "Deploy Doris on Helm Chart": helm repo add doris-repo
+# https://charts.selectdb.com); the chart is built from apache/doris-operator (helm-charts/doris-operator) and runs
+# Apache's own image apache/doris:operator-<version> from Docker Hub. The chart lags the Apache releases (operator
+# 26.0.x is out on GitHub/Docker Hub; the newest chart is 25.8.0).
+#
+# Installs only the operator and its CRDs (DorisCluster, group doris.selectdb.com; DorisDisaggregatedCluster, group
+# disaggregated.cluster.doris.com; together ~1.1 MB, applied server-side). It watches every namespace; no Doris
+# cluster is created here. The operator's admission webhook is disabled by the chart (deprecated upstream); the
+# Secret doris-operator-secret-cert it ships stays empty.
+#
+# HEAVY: a Doris cluster is FE (frontend: Java, metadata + SQL) + BE (backend: C++, storage + execution). The Doris
+# docs give 4 CPU / 8 GiB as the MINIMUM to start each of FE and BE (defaults 6c/12Gi FE, 8c/16Gi BE), i.e. at least
+# 8 CPU / 16 GiB for the smallest cluster. That does not fit the 2 x (2 vCPU, 8 GiB) reference cluster at all; add a
+# node pool with 2 x (4 vCPU, 16 GiB) or larger first. Smallest cluster (1 FE + 1 BE, not deployed by this connector):
+#
+#   apiVersion: doris.selectdb.com/v1
+#   kind: DorisCluster
+#   metadata: { name: shop-olap, namespace: dev }
+#   spec:
+#     feSpec:
+#       replicas: 1                                   # 3 in prod (FE metadata quorum)
+#       image: apache/doris:fe-4.0.8                  # Docker Hub, Apache's images; pin an exact version
+#       requests: { cpu: 4, memory: 8Gi }             # documented minimum
+#       limits:   { memory: 8Gi }
+#       containerSecurityContext: { runAsUser: 0, runAsNonRoot: false }   # official images run as root
+#       persistentVolumes:                            # default StorageClass
+#         - name: fe-meta
+#           mountPath: /opt/apache-doris/fe/doris-meta
+#           persistentVolumeClaimSpec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 10Gi } } }
+#     beSpec:
+#       replicas: 1                                   # 3 in prod (tables default to 3 replicas: set
+#                                                     # replication_num = 1 when creating tables on 1 BE)
+#       image: apache/doris:be-4.0.8
+#       requests: { cpu: 4, memory: 8Gi }             # documented minimum
+#       limits:   { memory: 8Gi }
+#       containerSecurityContext: { runAsUser: 0, runAsNonRoot: false }
+#       persistentVolumes:
+#         - name: be-storage
+#           mountPath: /opt/apache-doris/be/storage
+#           persistentVolumeClaimSpec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 50Gi } } }
+#
+# Node prerequisites for BE: vm.max_map_count >= 2000000 and swap off on the node (BE refuses to start otherwise);
+# managed node pools need a node-level sysctl setting (AKS/GKE/EKS custom node config), or set
+# beSpec.systemInitialization (a privileged init container running sysctl -w vm.max_map_count=2000000).
+# The namespace must allow root containers (no "restricted" Pod Security Standard there).
+#
+# Apps connect with any MySQL client to shop-olap-fe-service.dev.svc:9030 (user root, empty password at first:
+# set one right away with SET PASSWORD and keep it in a Secret). Stream Load / HTTP: port 8030 on the same Service.
+# No secrets or setup script for the operator itself.
+dorisOperator:
+  image:
+    repository: apache/doris                # Docker Hub, the Apache Doris project's images
+    tag: operator-25.8.0                    # the chart default is operator-latest (+ Always): pinned here
+    imagePullPolicy: IfNotPresent
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
+  enableAggregatedClusterRole: false

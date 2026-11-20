@@ -1,14 +1,30 @@
 id: milvus
 name: Milvus
 category: AI
-kind: planned
+kind: managed
 phase: '6'
-description: 'Vector database: semantic search over code, docs and logs for the AIO assistant.'
+description: 'Vector database for semantic search over code, docs and logs (AIO assistant, app AI features). Milvus
+  standalone in one pod: embedded etcd, local storage and embedded Woodpecker WAL on a 10 Gi disk, so no etcd, MinIO,
+  Pulsar or Kafka pods. Login required (root password from a Secret); Attu UI off.'
+namespace: milvus
+deployment: milvus-standalone
 chartRepo: https://zilliztech.github.io/milvus-helm/
 chart: milvus
+version: 5.0.33
+previousVersion: 5.0.32
+releaseName: milvus
+valuesPath: values/milvus/values.yaml
+accessHint: 'Run setup/milvus-secrets.sh (aio-catalog) before Enable. Apps: milvus.milvus.svc:19530 (gRPC and REST),
+  token root:<password>; better a user per app. Root password: kubectl -n milvus get secret milvus-root -o jsonpath=''{.data.password}''
+  | base64 -d. No UI; for Attu run it locally against kubectl -n milvus port-forward svc/milvus 19530:19530.'
+probes:
+- name: All Milvus components healthy
+  url: http://milvus.milvus.svc:9091/healthz
+  expect: OK
 license: Apache-2.0
 foundation: LF AI & Data
 origin: China (Zilliz)
 homepage: https://milvus.io
-version: 5.0.33
-previousVersion: 5.0.32
+pinNote: Image milvusdb/milvus (Docker Hub, the project's registry). The chart's etcd, MinIO, Pulsar, Kafka and
+  Woodpecker sub-charts are disabled (standalone with embedded etcd and local storage), so the Bitnami-based
+  sub-chart images are never pulled.

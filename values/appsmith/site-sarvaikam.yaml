@@ -1,0 +1,17 @@
+# Site overrides for sarvaikam.com: Appsmith at https://appsmith.tools.sarvaikam.com behind the AIO SSO gate
+# (oauth2-proxy + Keycloak realm aio; see sso/README.md). The Community Edition has no OIDC login of its own, so
+# after the gate people sign in with their Appsmith account (the first account created is the administrator;
+# turn off sign-up in Admin Settings once the team has accounts).
+ingress:
+  enabled: true
+  className: aio-azure
+  hosts:
+    - host: appsmith.tools.sarvaikam.com
+  tls: true
+  certManager: true                    # certificate from cert-manager, not the chart's self-signed one
+  certManagerTls:
+    - hosts: [appsmith.tools.sarvaikam.com]
+      secretName: appsmith-tools-tls
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-azure
+    traefik.ingress.kubernetes.io/router.middlewares: aio-ingress-sso@kubernetescrd

@@ -1,0 +1,12 @@
+# "sites" volume of ERPNext (site config, uploaded files, assets). ReadWriteOnce from the default StorageClass:
+# every Frappe pod has a required podAffinity to the others (values/erpnext/values.yaml), so they share one node.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: erpnext-sites
+  namespace: erpnext
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi

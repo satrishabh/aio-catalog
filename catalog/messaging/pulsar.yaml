@@ -1,13 +1,31 @@
 id: pulsar
 name: Apache Pulsar
 category: Messaging
-kind: planned
+kind: managed
 phase: '7'
-description: Messaging and streaming with multi-tenancy and geo-replication.
+description: 'Messaging and streaming (pub/sub, queues, topic retention) shared by apps, each app in its own Pulsar
+  tenant with its own token role. Runs as one small Pulsar standalone pod (metadata, storage and broker in one JVM,
+  under 1 GiB) with JWT authentication and authorization on, on a 10 Gi disk from the default StorageClass; no
+  replication, so a short outage on restart. Any cloud. For replicated production streaming use Kafka (Strimzi).'
+namespace: pulsar
+deployment: pulsar-standalone
 chartRepo: https://pulsar.apache.org/charts
 chart: pulsar
+version: 4.8.0
+previousVersion: 4.7.0
+releaseName: pulsar
+valuesPath: values/pulsar/values.yaml
+accessHint: 'Run setup/pulsar-secrets.sh (aio-catalog) before Enable. Apps connect to pulsar://pulsar-standalone.pulsar.svc:6650
+  with a token from APP_ROLE=<role> APP_NAMESPACE=<ns> bash setup/pulsar-secrets.sh (Secret <ns>/pulsar-token-<role>);
+  tenant setup: see values/pulsar/values.yaml. Admin: kubectl -n pulsar exec deploy/pulsar-standalone -- bin/pulsar-admin
+  --auth-plugin org.apache.pulsar.client.impl.auth.AuthenticationToken --auth-params file:///pulsar/tokens/client/token
+  tenants list'
+probes:
+- name: Pulsar broker serving
+  url: http://pulsar-standalone.pulsar.svc:8080/metrics
+  expect: pulsar_broker_topics_count
 license: Apache-2.0
 foundation: Apache
 homepage: https://pulsar.apache.org
-version: 4.8.0
-previousVersion: 4.7.0
+pinNote: 'Chart 4.8.0 moves Pulsar 4.0 LTS (4.0.12) to 5.0.0; the rollback target 4.7.0 runs 4.0.12. Standalone mode
+  data written by 5.0 has not been tested with 4.0.'

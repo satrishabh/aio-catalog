@@ -1,0 +1,23 @@
+# Langfuse's PostgreSQL (users, projects, prompts, API keys, settings), run by the CloudNativePG operator
+# (connector "cloudnative-pg"). The operator creates Secret langfuse-db-app (username langfuse, key "password") that
+# Langfuse reads, and the Service langfuse-db-rw. Traces and observations live in ClickHouse, not here.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: langfuse-db
+  namespace: langfuse
+spec:
+  instances: 1
+  storage:
+    size: 5Gi
+  resources:
+    requests: { cpu: 30m, memory: 160Mi }
+    limits: { memory: 512Mi }
+  postgresql:
+    parameters:
+      shared_buffers: 64MB
+      max_connections: "100"
+  bootstrap:
+    initdb:
+      database: langfuse
+      owner: langfuse

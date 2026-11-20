@@ -1,0 +1,20 @@
+# Plain-HTTP Service for the operator's health port (8085: answers "OK" when the operator is started and its
+# informers for FlinkDeployment/FlinkSessionJob are healthy), so the AIO connector Test can check that the operator
+# works. The chart ships no Service for it (only the webhook's).
+apiVersion: v1
+kind: Service
+metadata:
+  name: flink-operator-health
+  namespace: flink-operator
+  labels:
+    app.kubernetes.io/name: flink-kubernetes-operator
+    app.kubernetes.io/component: health
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: flink-kubernetes-operator
+  ports:
+    - name: health
+      port: 8085
+      targetPort: health-port
+      protocol: TCP

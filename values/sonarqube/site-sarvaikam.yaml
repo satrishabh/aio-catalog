@@ -1,0 +1,23 @@
+# Site overrides for sarvaikam.com: SonarQube at https://sonarqube.tools.sarvaikam.com behind the AIO SSO gate
+# (oauth2-proxy + Keycloak realm aio; see sso/README.md). The Community Build has no OpenID Connect login (only a
+# third-party plugin), so after the gate people still sign in to SonarQube with a SonarQube account (admin: see
+# setup/sonarqube-secrets.sh). SonarQube's built-in SAML login (all editions) could replace that later with a
+# Keycloak SAML client; not set up here.
+# Scanners and IDE plugins cannot pass the gate: CI uses the in-cluster URL (values.yaml header).
+ingress:
+  enabled: true
+  ingressClassName: aio-azure
+  hosts:
+    - name: sonarqube.tools.sarvaikam.com
+      path: /
+      pathType: Prefix
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-azure
+    traefik.ingress.kubernetes.io/router.middlewares: aio-ingress-sso@kubernetescrd
+  tls:
+    - secretName: sonarqube-tools-tls  # issued by cert-manager (annotation above)
+      hosts:
+        - sonarqube.tools.sarvaikam.com
+
+sonarProperties:
+  sonar.core.serverBaseURL: https://sonarqube.tools.sarvaikam.com
