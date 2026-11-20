@@ -1,0 +1,74 @@
+# Valkey values for the "valkey" connector (chart 0.12.1 / Valkey 9.1; rollback target 0.12.0).
+# Installed by the AIO portal through Argo CD (app connector-valkey, namespace valkey).
+#
+# One shared Valkey for apps in dev and staging: cache, queues, sessions. Production apps that need their own
+# Redis-compatible store should get a dedicated instance, not this one.
+#
+# Before Enable, create the password Secret (never commit it):
+#   kubectl create namespace valkey
+#   kubectl -n valkey create secret generic valkey-users --from-literal=default="$(openssl rand -hex 24)"
+# Apps: host valkey.valkey.svc, port 6379, user default, that password. Copy it into the app's own namespace as a
+# Secret (or sync it with External Secrets). Give each app its own key prefix (e.g. "<app>:").
+fullnameOverride: valkey
+
+auth:
+  enabled: true
+  usersExistingSecret: valkey-users     # key "default" = password of the default user
+  aclUsers:
+    default:
+      permissions: "~* &* +@all"
+
+# A single instance with a disk: data survives a restart; a lost disk loses the cache only.
+dataStorage:
+  enabled: true
+  requestedSize: 2Gi
+deploymentStrategy: Recreate            # one pod owns the ReadWriteOnce disk
+
+valkeyConfig: |
+  maxmemory 192mb
+  maxmemory-policy allkeys-lru
+  appendonly yes
+  appendfsync everysec
+
+# The chart's default probes run "valkey-cli ping" without the password; with auth on that gets NOAUTH.
+# Check the port instead; the exporter (below) proves that login works.
+startupProbe:
+  customProbe:
+    tcpSocket: { port: tcp }
+    periodSeconds: 5
+    failureThreshold: 24
+livenessProbe:
+  customProbe:
+    tcpSocket: { port: tcp }
+    periodSeconds: 10
+    failureThreshold: 3
+
+resources:
+  requests: { cpu: 20m, memory: 64Mi }
+  limits: { memory: 256Mi }
+
+# Only apps in dev and staging, the exporter, and Prometheus may connect.
+networkPolicy:
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchExpressions:
+              - { key: kubernetes.io/metadata.name, operator: In, values: [dev, staging] }
+      ports:
+        - { port: 6379, protocol: TCP }
+    - from:
+        - namespaceSelector:
+            matchExpressions:
+              - { key: kubernetes.io/metadata.name, operator: In, values: [aio-platform, monitoring] }
+      ports:
+        - { port: 9121, protocol: TCP }
+
+# The exporter logs in with the same password: "redis_up 1" on /metrics proves Valkey accepts it.
+metrics:
+  enabled: true
+  exporter:
+    resources:
+      requests: { cpu: 10m, memory: 24Mi }
+      limits: { memory: 64Mi }
+  serviceMonitor:
+    enabled: false                      # turn on when Prometheus is enabled, for Grafana dashboards

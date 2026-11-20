@@ -16,9 +16,20 @@ for f in "$DIR"/*.json; do
     uuid=$(kcadm.sh get clients -r "$REALM" -q clientId="$id" --fields id --format csv --noquotes | head -1)
     echo "created $id"
   else
-    echo "$body" | kcadm.sh update "clients/$uuid" -r "$REALM" -f - >/dev/null
+    echo "$body" | python3 -c 'import json,sys;d=json.load(sys.stdin);d.pop("protocolMappers",None);print(json.dumps(d))' |
+      kcadm.sh update "clients/$uuid" -r "$REALM" -f - >/dev/null
     echo "updated $id"
   fi
+  # An update does not touch protocol mappers: add the ones this client is missing (matched by name)
+  python3 -c 'import json,sys;[print(json.dumps(m)) for m in json.load(open(sys.argv[1])).get("protocolMappers",[])]' "$f" |
+    while read -r mapper; do
+      name=$(echo "$mapper" | python3 -c 'import json,sys;print(json.load(sys.stdin)["name"])')
+      if ! kcadm.sh get "clients/$uuid/protocol-mappers/models" -r "$REALM" --fields name --format csv --noquotes |
+          grep -qxF "$name"; then
+        echo "$mapper" | kcadm.sh create "clients/$uuid/protocol-mappers/models" -r "$REALM" -f - >/dev/null
+        echo "  added mapper '$name' to $id"
+      fi
+    done
   for role in aio-admin aio-business; do
     kcadm.sh get "clients/$uuid/roles/$role" -r "$REALM" >/dev/null 2>&1 ||
       kcadm.sh create "clients/$uuid/roles" -r "$REALM" -s name="$role" >/dev/null

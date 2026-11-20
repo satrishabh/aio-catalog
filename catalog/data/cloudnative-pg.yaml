@@ -1,13 +1,26 @@
 id: cloudnative-pg
 name: CloudNativePG
 category: Data
-kind: planned
+kind: managed
 phase: '5'
-description: 'Managed PostgreSQL for apps: HA, backups to Blob/S3, point-in-time recovery.'
+description: 'PostgreSQL operator for apps: an app gets its own database cluster from one small Cluster manifest,
+  with failover, rolling minor upgrades and a generated app Secret. Installs only the operator; databases are
+  created per app. Any cloud: data on disks from the default StorageClass.'
+namespace: cnpg-system
+deployment: cnpg-controller-manager
 chartRepo: https://cloudnative-pg.github.io/charts
 chart: cloudnative-pg
+version: 0.29.1
+previousVersion: 0.29.0
+releaseName: cnpg
+valuesPath: values/cloudnative-pg/values.yaml
+extrasPath: extras/cloudnative-pg
+accessHint: 'kubectl get clusters.postgresql.cnpg.io -A. A database for an app: see the example in values/cloudnative-pg/values.yaml
+  (aio-catalog); the app reads Secret <cluster>-app (keys uri, host, username, password).'
+probes:
+- name: Operator controllers running
+  url: http://cnpg-metrics.cnpg-system.svc:8080/metrics
+  expect: controller="cluster"
 license: Apache-2.0
 foundation: CNCF (sandbox)
 homepage: https://cloudnative-pg.io
-version: 0.29.1
-previousVersion: 0.29.0

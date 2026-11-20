@@ -1,0 +1,103 @@
+# Harbor values for the "harbor" connector (chart 1.19.4 / Harbor 2.15.4; rollback target 1.19.2).
+# Installed by the AIO portal through Argo CD (app connector-harbor, namespace harbor).
+#
+# A private registry on any cloud: images on a disk from the default StorageClass, the database on a
+# CloudNativePG cluster (extras/harbor, so the "cloudnative-pg" connector is required), Redis inside the chart.
+#
+# Before Enable, run setup/harbor-secrets.sh once. Under Argo CD the chart cannot keep its own generated secrets
+# (it would make new ones on every render and Harbor would never settle), so every secret comes from:
+#   Secret harbor-secrets: secret, CSRF_KEY, JOBSERVICE_SECRET, REGISTRY_HTTP_SECRET, secretKey,
+#                          HARBOR_ADMIN_PASSWORD, REGISTRY_PASSWD, REGISTRY_HTPASSWD
+#   Secret harbor-token:   tls.crt, tls.key (signs registry tokens)
+#
+# Without a site overlay Harbor is reachable in-cluster only (http://harbor.harbor.svc). A site overlay adds the
+# HTTPS ingress and Keycloak login (site-<site>.yaml).
+expose:
+  type: clusterIP
+  tls:
+    enabled: false
+  clusterIP:
+    name: harbor
+externalURL: http://harbor.harbor.svc
+
+persistence:
+  enabled: true
+  persistentVolumeClaim:
+    registry: { size: 20Gi }
+    redis: { size: 1Gi }
+  imageChartStorage:
+    type: filesystem
+
+updateStrategy:
+  type: Recreate                       # registry and jobservice own ReadWriteOnce disks
+
+existingSecretAdminPassword: harbor-secrets
+existingSecretAdminPasswordKey: HARBOR_ADMIN_PASSWORD
+existingSecretSecretKey: harbor-secrets
+
+core:
+  existingSecret: harbor-secrets       # key "secret"
+  existingXsrfSecret: harbor-secrets   # key CSRF_KEY
+  secretName: harbor-token
+  resources:
+    requests: { cpu: 50m, memory: 192Mi }
+    limits: { memory: 512Mi }
+
+jobservice:
+  existingSecret: harbor-secrets
+  existingSecretKey: JOBSERVICE_SECRET
+  jobLoggers: [database]               # job logs in the database: no extra disk
+  maxJobWorkers: 4
+  resources:
+    requests: { cpu: 20m, memory: 96Mi }
+    limits: { memory: 256Mi }
+
+registry:
+  existingSecret: harbor-secrets
+  existingSecretKey: REGISTRY_HTTP_SECRET
+  credentials:
+    existingSecret: harbor-secrets     # REGISTRY_PASSWD, REGISTRY_HTPASSWD
+  registry:
+    resources:
+      requests: { cpu: 20m, memory: 96Mi }
+      limits: { memory: 512Mi }
+  controller:
+    resources:
+      requests: { cpu: 10m, memory: 48Mi }
+      limits: { memory: 128Mi }
+
+portal:
+  resources:
+    requests: { cpu: 10m, memory: 24Mi }
+    limits: { memory: 64Mi }
+
+nginx:
+  resources:
+    requests: { cpu: 10m, memory: 24Mi }
+    limits: { memory: 64Mi }
+
+# Images are scanned in the AIO pipeline (Trivy step) and, while running, by the Trivy Operator connector.
+trivy:
+  enabled: false
+
+database:
+  type: external
+  external:
+    host: harbor-db-rw.harbor.svc      # CloudNativePG cluster from extras/harbor
+    port: "5432"
+    username: harbor
+    coreDatabase: registry
+    existingSecret: harbor-db-app      # created by CloudNativePG, key "password"
+    sslmode: require
+  maxIdleConns: 10
+  maxOpenConns: 50
+
+redis:
+  type: internal
+  internal:
+    resources:
+      requests: { cpu: 10m, memory: 32Mi }
+      limits: { memory: 128Mi }
+
+metrics:
+  enabled: false

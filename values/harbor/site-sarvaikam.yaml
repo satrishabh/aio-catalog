@@ -1,0 +1,25 @@
+# Site overrides for sarvaikam.com: Harbor at https://harbor.tools.sarvaikam.com with Keycloak login (realm aio).
+# Needs Secret harbor/harbor-oidc (key config), written by setup/harbor-secrets.sh with OIDC_CLIENT_SECRET set.
+# Harbor applies those settings at every start (CONFIG_OVERWRITE_JSON), so change them there, not in the UI.
+# Push: docker login harbor.tools.sarvaikam.com with your Keycloak user name and the CLI secret from
+# Harbor -> User Profile (OIDC users have no Harbor password), or with a robot account.
+expose:
+  type: ingress
+  tls:
+    enabled: true
+    certSource: secret
+    secret:
+      secretName: harbor-tools-tls     # issued by cert-manager (annotation below)
+  ingress:
+    className: aio-azure
+    hosts:
+      core: harbor.tools.sarvaikam.com
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-azure
+externalURL: https://harbor.tools.sarvaikam.com
+
+core:
+  extraEnvVars:
+    - name: CONFIG_OVERWRITE_JSON
+      valueFrom:
+        secretKeyRef: { name: harbor-oidc, key: config }

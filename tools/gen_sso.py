@@ -20,6 +20,26 @@ CALLBACK = {
     "aio-gitea": "/user/oauth2/aio/callback", "aio-dependency-track": "/static/oidc-callback.html",
 }
 HOST = {"aio-grafana": "grafana", "aio-argocd": "argocd"}
+# Tools that read roles from a flat "groups" claim (Harbor: oidc_groups_claim / oidc_admin_group) get a mapper
+# that puts this client's roles (aio-admin, aio-business) into "groups".
+GROUPS_CLAIM = {"aio-harbor"}
+
+
+def groups_mapper(client_id):
+    return {
+        "name": "client roles as groups",
+        "protocol": "openid-connect",
+        "protocolMapper": "oidc-usermodel-client-role-mapper",
+        "config": {
+            "usermodel.clientRoleMapping.clientId": client_id,
+            "claim.name": "groups",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+        },
+    }
 
 
 def client(client_id, host, callback, description):
@@ -51,6 +71,8 @@ def main():
             continue
         cid = sso["clientId"]
         c = client(cid, HOST.get(cid, e["id"]), CALLBACK.get(cid, "/oauth2/callback"), f"{e['name']} (AIO managed)")
+        if cid in GROUPS_CLAIM:
+            c["protocolMappers"] = [groups_mapper(cid)]
         json.dump(c, open(os.path.join(OUT, cid + ".json"), "w", encoding="utf-8", newline="\n"), indent=2)
         written.append(cid)
     proxy = client("aio-tools-sso", "auth", "/oauth2/callback", "oauth2-proxy gate for tool UIs")

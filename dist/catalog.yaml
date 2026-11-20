@@ -23,6 +23,20 @@ connectors:
   sso:
     mode: oidc
     clientId: aio-argocd
+- id: biome
+  name: Biome (CI step)
+  category: CI/CD
+  kind: core
+  phase: '5'
+  namespace: tekton-pipelines
+  deployment: tekton-pipelines-controller
+  description: Linter and formatter for JavaScript, TypeScript, JSX, JSON and CSS (Biome 2.6.5). Runs as the "lint"
+    step of the AIO CI pipeline (Task lint-biome, "biome ci"), not as a service, so its status is the Tekton controller's.
+    Off until phase 5 is switched on (Connectors -> Phases); then it runs for repos with biome.json or biome.jsonc,
+    and a finding fails the run before the build.
+  license: MIT OR Apache-2.0
+  foundation: Independent
+  homepage: https://biomejs.dev
 - id: tekton
   name: Tekton Pipelines
   category: CI/CD
@@ -236,6 +250,60 @@ connectors:
   homepage: https://opencost.io
   sso:
     mode: proxy
+- id: cloudnative-pg
+  name: CloudNativePG
+  category: Data
+  kind: managed
+  phase: '5'
+  description: 'PostgreSQL operator for apps: an app gets its own database cluster from one small Cluster manifest,
+    with failover, rolling minor upgrades and a generated app Secret. Installs only the operator; databases are
+    created per app. Any cloud: data on disks from the default StorageClass.'
+  namespace: cnpg-system
+  deployment: cnpg-controller-manager
+  chartRepo: https://cloudnative-pg.github.io/charts
+  chart: cloudnative-pg
+  version: 0.29.1
+  previousVersion: 0.29.0
+  releaseName: cnpg
+  valuesPath: values/cloudnative-pg/values.yaml
+  extrasPath: extras/cloudnative-pg
+  accessHint: 'kubectl get clusters.postgresql.cnpg.io -A. A database for an app: see the example in values/cloudnative-pg/values.yaml
+    (aio-catalog); the app reads Secret <cluster>-app (keys uri, host, username, password).'
+  probes:
+  - name: Operator controllers running
+    url: http://cnpg-metrics.cnpg-system.svc:8080/metrics
+    expect: controller="cluster"
+  license: Apache-2.0
+  foundation: CNCF (sandbox)
+  homepage: https://cloudnative-pg.io
+- id: valkey
+  name: Valkey
+  category: Data
+  kind: managed
+  phase: '5'
+  description: 'Shared in-memory key-value store for apps in dev and staging (cache, queues, sessions): the open-source
+    fork of Redis, which is no longer OSI-licensed. Drop-in compatible with Redis clients. Password required; data
+    is kept on a disk and survives restarts.'
+  namespace: valkey
+  deployment: valkey
+  chartRepo: https://valkey.io/valkey-helm
+  chart: valkey
+  version: 0.12.1
+  previousVersion: 0.12.0
+  releaseName: valkey
+  valuesPath: values/valkey/values.yaml
+  accessHint: 'Create the password Secret before Enable: kubectl create ns valkey; kubectl -n valkey create secret
+    generic valkey-users --from-literal=default="$(openssl rand -hex 24)". Apps in dev and staging connect to valkey.valkey.svc:6379
+    as user default. Shell: kubectl -n valkey exec -it deploy/valkey -c valkey -- valkey-cli --user default --askpass'
+  probes:
+  - name: Valkey accepts the password (exporter)
+    url: http://valkey-metrics.valkey.svc:9121/metrics
+    expect: redis_up 1
+  license: BSD-3-Clause
+  foundation: Linux Foundation
+  homepage: https://valkey.io
+  pinNote: The metrics sidecar is redis_exporter (ghcr.io/oliver006/redis_exporter, MIT), the exporter the chart
+    ships with, from that project's own registry. Test uses it to prove Valkey accepts the password.
 - id: oauth2-proxy
   name: oauth2-proxy (SSO gate)
   category: Identity
@@ -486,6 +554,45 @@ connectors:
   license: Apache-2.0
   foundation: CNCF (incubating)
   homepage: https://external-secrets.io
+- id: harbor
+  name: Harbor
+  category: Security
+  kind: managed
+  phase: '5'
+  description: Private container registry with projects, robot accounts, retention rules, replication and Keycloak
+    login. Any cloud; images on a 20 Gi disk, database on CloudNativePG. Image scanning stays in the AIO pipeline
+    and the Trivy Operator, so Harbor's own scanner is off.
+  namespace: harbor
+  deployment: harbor-core
+  chartRepo: https://helm.goharbor.io
+  chart: harbor
+  version: 1.19.4
+  previousVersion: 1.19.2
+  releaseName: harbor
+  valuesPath: values/harbor/values.yaml
+  siteValues:
+    sarvaikam: values/harbor/site-sarvaikam.yaml
+  extrasPath: extras/harbor
+  requires:
+  - cloudnative-pg
+  accessHint: 'Run setup/harbor-secrets.sh (aio-catalog) before Enable. With a site overlay: https://harbor.<tools
+    domain> (sarvaikam: harbor.tools.sarvaikam.com). Otherwise kubectl -n harbor port-forward svc/harbor 8080:80.
+    Admin password: kubectl -n harbor get secret harbor-secrets -o jsonpath=''{.data.HARBOR_ADMIN_PASSWORD}'' |
+    base64 -d'
+  probes:
+  - name: Harbor API
+    url: http://harbor-core.harbor.svc/api/v2.0/ping
+    expect: Pong
+  - name: All Harbor components healthy
+    url: http://harbor-core.harbor.svc/api/v2.0/health
+    expect: '"status":"healthy"'
+  sso:
+    mode: oidc
+    clientId: aio-harbor
+  license: Apache-2.0
+  foundation: CNCF (graduated)
+  origin: China (VMware China R&D)
+  homepage: https://goharbor.io
 - id: trivy-operator
   name: Trivy Operator
   category: Security
@@ -646,16 +753,6 @@ connectors:
   foundation: Independent (SalesAgility)
   origin: United Kingdom
   homepage: https://suitecrm.com
-- id: biome
-  name: Biome (CI step)
-  category: CI/CD
-  kind: planned
-  phase: '5'
-  description: Fast linter and formatter for JavaScript, TypeScript, JSON and CSS. Runs as a step in the AIO CI
-    pipeline (biome ci), not as a service.
-  license: MIT OR Apache-2.0
-  foundation: Independent
-  homepage: https://biomejs.dev
 - id: gitlab-ce
   name: GitLab CE
   category: CI/CD
@@ -725,19 +822,6 @@ connectors:
   homepage: https://koordinator.sh
   version: 1.8.0
   previousVersion: 1.7.0
-- id: cloudnative-pg
-  name: CloudNativePG
-  category: Data
-  kind: planned
-  phase: '5'
-  description: 'Managed PostgreSQL for apps: HA, backups to Blob/S3, point-in-time recovery.'
-  chartRepo: https://cloudnative-pg.github.io/charts
-  chart: cloudnative-pg
-  license: Apache-2.0
-  foundation: CNCF (sandbox)
-  homepage: https://cloudnative-pg.io
-  version: 0.29.1
-  previousVersion: 0.29.0
 - id: doris
   name: Apache Doris
   category: Data
@@ -806,20 +890,6 @@ connectors:
   foundation: Independent (PingCAP)
   origin: China (PingCAP)
   homepage: https://docs.pingcap.com/tidb-in-kubernetes
-- id: valkey
-  name: Valkey
-  category: Data
-  kind: planned
-  phase: '5'
-  description: 'In-memory key-value store (cache, queues, sessions): the open-source fork of Redis, which is no
-    longer OSI-licensed. Drop-in compatible with Redis clients.'
-  chartRepo: https://valkey.io/valkey-helm
-  chart: valkey
-  license: BSD-3-Clause
-  foundation: Linux Foundation
-  homepage: https://valkey.io
-  version: 0.12.1
-  previousVersion: 0.12.0
 - id: answer
   name: Apache Answer
   category: Developer
@@ -1147,23 +1217,6 @@ connectors:
   homepage: https://falco.org
   version: 9.2.2
   previousVersion: 9.2.1
-- id: harbor
-  name: Harbor
-  category: Security
-  kind: planned
-  phase: '5'
-  description: Private container registry with Trivy scanning, signing, replication and OIDC login.
-  chartRepo: https://helm.goharbor.io
-  chart: harbor
-  sso:
-    mode: oidc
-    clientId: aio-harbor
-  license: Apache-2.0
-  foundation: CNCF (graduated)
-  origin: China (VMware China R&D)
-  homepage: https://goharbor.io
-  version: 1.19.4
-  previousVersion: 1.19.2
 - id: openbao
   name: OpenBao
   category: Security
