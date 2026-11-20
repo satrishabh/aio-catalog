@@ -14,7 +14,7 @@
     "https://gitlab-ce.tools.sarvaikam.com"
   ],
   "attributes": {
-    "pkce.code.challenge.method": "S256",
+    "pkce.code.challenge.method": "",
     "post.logout.redirect.uris": "https://gitlab-ce.tools.sarvaikam.com/*"
   },
   "defaultClientScopes": [

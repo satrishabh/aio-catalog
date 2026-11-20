@@ -1,0 +1,223 @@
+# ERPNext values for the "erpnext" connector (chart 8.0.91 / ERPNext v16.54.0; rollback target 8.0.90).
+# Installed by the AIO portal through Argo CD (app connector-erpnext, namespace erpnext). Chart: frappe/helm
+# (helm.erpnext.com), published by Frappe Technologies.
+#
+# One ERPNext site named "erpnext" (accounting, GST, HR, stock, manufacturing, projects) for the whole company.
+# Pods: nginx, gunicorn, socketio, three queue workers (short/default/long), scheduler, MariaDB, two Valkeys.
+# Everything comes from official images: frappe/erpnext, mariadb (Docker official image) and valkey/valkey.
+# None of the chart's Bitnami subcharts (MariaDB, PostgreSQL, Redis) is used.
+#
+#   Database: the chart's own MariaDB StatefulSet ("mariadb-sts", official mariadb image, 5 Gi disk). ERPNext needs
+#             MariaDB (its PostgreSQL support does not cover ERPNext), so CloudNativePG cannot be used. Reachable
+#             only from pods in this namespace (extras/erpnext/network-policy.yaml).
+#   Redis:    two small Valkeys from the official valkey-io chart (cache and queue), no password, reachable only
+#             from pods in this namespace (networkPolicy below). The queue Valkey has no disk: queued background
+#             jobs are lost if it restarts (same as the upstream compose setup).
+#   Files:    "sites" (site config, uploaded attachments, built assets) on one ReadWriteOnce disk, PVC
+#             erpnext-sites in extras/erpnext, from the default StorageClass. Upstream asks for ReadWriteMany; with
+#             one replica of each component, RWO works when all Frappe pods share a node, which the required
+#             podAffinity below enforces (so they also all move together). Scaling out needs an RWX class.
+#
+# Before Enable, run setup/erpnext-secrets.sh once. Secret erpnext (never in Git) holds:
+#   mariadb-root-password  MariaDB root (the chart renders its own Secret only when a password is in values)
+#   admin-password         ERPNext user "Administrator"
+#   site-url               optional, e.g. https://erpnext.tools.sarvaikam.com (host_name, used in e-mail links and
+#                          as the OAuth redirect base)
+#
+# Site creation and upgrades: the chart's jobs are all off (their names contain the render time, so every Argo CD
+# refresh would create a new Job). Instead extras/erpnext/site-job.yaml, an Argo CD Sync hook, writes the bench
+# config, creates the site on the first sync and runs "bench migrate" on later ones. It uses the same image tag
+# as below: when bumping the chart, set the new ERPNext tag here AND in site-job.yaml; the next sync migrates.
+# Rolling back the chart keeps this tag (a migrated database cannot go back to an older ERPNext).
+#
+# Apps: ERPNext REST API at http://erpnext.erpnext.svc:8080/api (token auth: API key/secret of a user, created in
+# the UI under User -> API Access).
+image:
+  repository: frappe/erpnext
+  tag: v16.54.0
+  pullPolicy: IfNotPresent
+
+# All Frappe pods mount the same ReadWriteOnce disk, so they must run on one node. The first pod picks the node.
+x-frappe-affinity: &frappeAffinity
+  podAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - topologyKey: kubernetes.io/hostname
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/app: frappe
+
+persistence:
+  worker:
+    enabled: true
+    existingClaim: erpnext-sites          # extras/erpnext/sites-pvc.yaml (default StorageClass, ReadWriteOnce)
+  logs:
+    enabled: false                        # logs go to stdout; the logs dir is an emptyDir
+
+nginx:
+  replicaCount: 1
+  environment:
+    # One site: every host name (ingress, Service, port-forward) serves site "erpnext".
+    frappeSiteNameHeader: erpnext
+    clientMaxBodySize: "25m"
+  # Two pods of one Deployment on one node (rolling update) must not be blocked by the spread rule.
+  defaultTopologySpread:
+    maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 128Mi }
+  affinity: *frappeAffinity
+
+worker:
+  defaultTopologySpread:
+    maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
+  gunicorn:
+    replicaCount: 1
+    resources:
+      requests: { cpu: 50m, memory: 384Mi }
+      limits: { memory: 1Gi }
+    affinity: *frappeAffinity
+  default:
+    replicaCount: 1
+    resources:
+      requests: { cpu: 20m, memory: 192Mi }
+      limits: { memory: 512Mi }
+    affinity: *frappeAffinity
+  short:
+    replicaCount: 1
+    resources:
+      requests: { cpu: 20m, memory: 192Mi }
+      limits: { memory: 512Mi }
+    affinity: *frappeAffinity
+  long:
+    replicaCount: 1
+    resources:
+      requests: { cpu: 20m, memory: 192Mi }
+      limits: { memory: 512Mi }
+    affinity: *frappeAffinity
+  scheduler:
+    replicaCount: 1
+    resources:
+      requests: { cpu: 10m, memory: 128Mi }
+      limits: { memory: 384Mi }
+    affinity: *frappeAffinity
+
+socketio:
+  replicaCount: 1
+  resources:
+    requests: { cpu: 10m, memory: 64Mi }
+    limits: { memory: 256Mi }
+  affinity: *frappeAffinity
+
+ingress:
+  enabled: false                          # site overlay
+
+# The chart's jobs would be named "<job>-<render time>": off. extras/erpnext/site-job.yaml does configure,
+# new-site and migrate instead.
+jobs:
+  configure:
+    enabled: false
+  createSite:
+    enabled: false
+    adminPassword: ""
+  createMultipleSites:
+    enabled: false
+    adminPassword: ""
+  migrate:
+    enabled: false
+  backup:
+    enabled: false
+
+# MariaDB: the chart's own StatefulSet with the official image. rootPassword is empty so the chart renders no
+# Secret; Secret "erpnext" (key mariadb-root-password) comes from setup/erpnext-secrets.sh.
+mariadb-sts:
+  enabled: true
+  image:
+    repository: mariadb
+    tag: "11.8.8"                         # LTS line used by frappe_docker for v16
+    pullPolicy: IfNotPresent
+  rootPassword: ""
+  persistence:
+    size: 5Gi                             # default StorageClass
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { memory: 768Mi }
+  # Settings from frappe_docker (pwd.yml) for MariaDB 11.8, plus a small buffer pool.
+  myCnf: |
+    [mysqld]
+    character-set-server=utf8mb4
+    collation-server=utf8mb4_unicode_ci
+    skip-character-set-client-handshake
+    innodb-snapshot-isolation=OFF
+    innodb_buffer_pool_size=128M
+    max_connections=100
+    performance_schema=OFF
+
+mariadb:
+  enabled: false
+mariadb-subchart:
+  enabled: false
+postgresql:
+  enabled: false
+postgresql-subchart:
+  enabled: false
+postgresql-sts:
+  enabled: false
+  postgresPassword: ""
+redis-cache:
+  enabled: false
+redis-queue:
+  enabled: false
+dragonfly-cache:
+  enabled: false
+dragonfly-queue:
+  enabled: false
+
+# Valkey (official valkey-io chart) for cache and queue. No password (Frappe's redis URLs have none), so only pods
+# of this namespace may connect.
+valkey-cache:
+  enabled: true
+  image:
+    repository: valkey/valkey
+    tag: "8.1.11"
+  valkeyConfig: |
+    maxmemory 64mb
+    maxmemory-policy allkeys-lru
+    save ""
+    appendonly no
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 128Mi }
+  initResources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits: { memory: 64Mi }
+  networkPolicy:
+    ingress:
+      - from:
+          - podSelector: {}
+        ports:
+          - { port: 6379, protocol: TCP }
+
+valkey-queue:
+  enabled: true
+  image:
+    repository: valkey/valkey
+    tag: "8.1.11"
+  valkeyConfig: |
+    maxmemory 64mb
+    maxmemory-policy noeviction
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 128Mi }
+  initResources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits: { memory: 64Mi }
+  networkPolicy:
+    ingress:
+      - from:
+          - podSelector: {}
+        ports:
+          - { port: 6379, protocol: TCP }

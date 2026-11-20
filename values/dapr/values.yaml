@@ -1,0 +1,74 @@
+# Dapr values for the "dapr" connector (chart 1.19.1 / Dapr 1.19.1; rollback target 1.19.0).
+# Installed by the AIO portal through Argo CD (app connector-dapr, namespace dapr-system).
+#
+# Installs the Dapr control plane, non-HA: operator, sentry (mTLS CA), sidecar injector and placement (actors) with
+# one replica each, plus the scheduler (jobs, actor reminders, workflows). The chart always runs the scheduler as a
+# 3-member embedded etcd cluster (StatefulSet, replicas fixed at 3 in the chart, one small disk each); there is no
+# single-replica option. No dashboard (not part of this chart). Images from ghcr.io/dapr.
+#
+# No secrets to prepare. Sentry creates its own root CA and issuer certificate when it first starts and stores them
+# in Secret dapr-system/dapr-trust-bundle (the chart renders that Secret and ConfigMap empty: nothing random is
+# generated at render time, so Argo CD sees no drift). Back the Secret up if you want to keep the CA across a
+# reinstall; deleting it makes Sentry create a new CA and every Dapr sidecar must then be restarted.
+#
+# How an app uses Dapr (any namespace): add pod annotations to its Deployment template
+#     dapr.io/enabled: "true"
+#     dapr.io/app-id: "shop-api"
+#     dapr.io/app-port: "8080"
+#     dapr.io/sidecar-cpu-request: "10m"
+#     dapr.io/sidecar-memory-request: "32Mi"
+#     dapr.io/sidecar-memory-limit: "128Mi"
+# and declare its building blocks as Dapr Components in its namespace, e.g. pub/sub or state on the Valkey
+# connector (type pubsub.redis / state.redis, redisHost valkey.valkey.svc:6379, password from a Secret), or
+# PostgreSQL from a CloudNativePG cluster (state.postgresql v2). The app talks to its sidecar on localhost:3500
+# (HTTP) / 50001 (gRPC); app-to-app calls go sidecar-to-sidecar with mTLS from Sentry.
+#
+# Admission webhook: the sidecar injector is a MutatingWebhook on pod CREATE. Pods without the annotation
+# dapr.io/enabled: "true" are returned unchanged (checked in the injector), the webhook has failurePolicy Ignore
+# (a down injector never blocks pod creation; a Dapr pod created meanwhile simply starts without its sidecar), and
+# kube-system / dapr-system are excluded by namespaceSelector.
+#
+# Scheduler disk: StatefulSet volumeClaimTemplates are immutable. Keep dapr_scheduler.cluster.storageSize as it is
+# after the first Enable (to grow it, expand the PVCs on the cluster). The chart's lookup() of the live
+# StatefulSet returns nothing under Argo CD, so the value below is what is rendered.
+global:
+  ha:
+    enabled: false
+  logAsJson: true
+
+dapr_operator:
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 256Mi }
+
+dapr_sentry:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 128Mi }
+
+dapr_sidecar_injector:
+  webhookFailurePolicy: Ignore
+  namespaceSelector:
+    matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values: [kube-system, dapr-system]
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 128Mi }
+
+dapr_placement:
+  ha: false
+  resources:
+    requests: { cpu: 10m, memory: 48Mi }
+    limits: { memory: 256Mi }
+
+dapr_scheduler:
+  cluster:
+    storageSize: 1Gi          # per member (3 PVCs); upstream default 16Gi
+  etcdSpaceQuota: 512Mi       # etcd backend limit, well inside the 1Gi disk
+  etcdMaxSnapshots: 3
+  etcdMaxWals: 3
+  resources:
+    requests: { cpu: 20m, memory: 96Mi }
+    limits: { memory: 384Mi }

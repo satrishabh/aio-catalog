@@ -1,0 +1,17 @@
+# Lets the chart's system-cluster-critical pods (hard-coded priority) run in volcano-system on GKE, which only
+# admits critical-priority pods outside kube-system when a ResourceQuota with this scope exists. Harmless on AKS,
+# EKS and on-prem (no limits are set). PreSync hook so it exists before the chart's admission-init hook Job.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: volcano-critical-pods
+  namespace: volcano-system
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  scopeSelector:
+    matchExpressions:
+      - operator: In
+        scopeName: PriorityClass
+        values: [system-cluster-critical]

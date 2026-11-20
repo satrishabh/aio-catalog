@@ -1,0 +1,67 @@
+# Volcano values for the "volcano" connector (chart 1.16.0 / Volcano 1.16.0; rollback target 1.15.3).
+# Installed by the AIO portal through Argo CD (app connector-volcano, namespace volcano-system).
+#
+# Installs a second scheduler named "volcano" next to the default kube-scheduler (which is not touched), the
+# controllers (Volcano Job, CronJob, PodGroup, Queue, JobFlow) and the admission webhook, one replica each, plus the
+# CRDs. No agent, agent-scheduler, colocation, descheduler, Prometheus/Grafana/kube-state-metrics. Images from
+# docker.io/volcanosh (the project's own registry).
+#
+# Ordinary pods are never affected: the scheduler only binds pods with spec.schedulerName: volcano, the controller
+# only creates PodGroups for such pods, and the admission webhooks enabled here (enabled_admissions below) act only
+# on Volcano's own resources (batch.volcano.sh jobs/cronjobs, scheduling.volcano.sh queues/podgroups,
+# topology.volcano.sh hypernodes): no pod or namespace webhook is installed. Those webhooks keep the chart's
+# failurePolicy Fail (if the admission pod is down only Volcano objects are rejected) and skip kube-system and
+# volcano-system.
+#
+# No secrets to prepare. The webhook's TLS certificate is made by the chart's admission-init Job (a Helm hook,
+# run by Argo CD as a PreSync hook on every sync) into Secret volcano-system/volcano-admission-secret; the webhook
+# server reads it at start and writes the CA into the webhook configurations itself, so nothing random is rendered.
+# GKE only admits system-cluster-critical pods (all Volcano pods use that priority, hard-coded in the chart)
+# outside kube-system when the namespace has a matching ResourceQuota: extras/volcano/ creates it.
+#
+# How apps use it (any namespace): a batch/AI job that needs gang scheduling or queues either sets
+# schedulerName: volcano on its pods (Spark, Flink, Kubeflow, Ray and Argo Workflows support this) or is written as
+# a Volcano Job:
+#   apiVersion: batch.volcano.sh/v1alpha1
+#   kind: Job
+#   metadata: { name: train, namespace: dev }
+#   spec:
+#     schedulerName: volcano
+#     minAvailable: 2                      # start all workers together or none
+#     queue: default                       # created by the controller; add Queues to share capacity
+#     tasks:
+#       - name: worker
+#         replicas: 2
+#         template:
+#           spec:
+#             restartPolicy: OnFailure
+#             containers:
+#               - name: worker
+#                 image: <image>
+#                 resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { memory: 256Mi } }
+basic:
+  image_pull_policy: IfNotPresent
+
+custom:
+  metrics_enable: false            # no bundled Prometheus / Grafana / kube-state-metrics
+  agent_scheduler_enable: false
+  colocation_enable: false
+  admission_replicas: 1
+  controller_replicas: 1
+  scheduler_replicas: 1
+  leader_elect_enable: false
+  # Volcano's own resources only; never /pods/mutate or /pods/validate.
+  enabled_admissions: "/jobs/mutate,/jobs/validate,/podgroups/validate,/queues/mutate,/queues/validate,/hypernodes/validate,/cronjobs/validate"
+  scheduler_node_worker_threads: 4
+  scheduler_kube_api_qps: 100
+  scheduler_kube_api_burst: 200
+
+  admission_resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 128Mi }
+  controller_resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 256Mi }
+  scheduler_resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 256Mi }

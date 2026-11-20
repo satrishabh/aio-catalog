@@ -12,8 +12,8 @@ Tools connect in one of two ways, set per catalog entry in `sso.mode`:
 
 | Mode | How | Tools today |
 | --- | --- | --- |
-| `oidc` | The tool has its own OIDC login and gets its own Keycloak client (`aio-<tool>`). | Grafana, Argo CD, Harbor, Airflow, Superset, Backstage, Gitea, Dependency-Track (public client: browser login with PKCE, no secret) |
-| `proxy` | The tool has no login. Traefik sends each request to oauth2-proxy first, which redirects to Keycloak. | OpenCost, Goldilocks, Jaeger, Prometheus, Alertmanager, Appsmith (Community Edition has no OIDC; users still sign in to Appsmith behind the gate) |
+| `oidc` | The tool has its own OIDC login and gets its own Keycloak client (`aio-<tool>`). | Grafana, Argo CD, Harbor, Airflow, Superset, Backstage, Gitea, Dependency-Track (public client: browser login with PKCE, no secret), Langfuse, Temporal (also behind the gate), ERPNext (set up in-app: Social Login Key) |
+| `proxy` | The tool has no login. Traefik sends each request to oauth2-proxy first, which redirects to Keycloak. | OpenCost, Goldilocks, Jaeger, Prometheus, Alertmanager, Appsmith and SonarQube (no OIDC in their free editions; users still sign in to the tool behind the gate), Jitsi Meet |
 | none | No UI, or the UI is reached with `kubectl` only. | operators (KEDA, Velero, kube-green, ...) |
 
 Tool UIs live under `https://<tool>.tools.sarvaikam.com`. The login callback for proxied tools is `https://auth.tools.sarvaikam.com`.

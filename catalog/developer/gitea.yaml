@@ -1,16 +1,40 @@
 id: gitea
 name: Gitea
 category: Developer
-kind: planned
+kind: managed
 phase: '7'
-description: Self-hosted Git service, for teams that cannot use GitHub.
+description: Self-hosted Git server (repositories, pull requests, issues, packages, LFS) for teams that want their
+  code inside the cluster; AIO itself keeps GitHub as its main SCM. One Gitea pod with a 10 Gi disk, database on
+  CloudNativePG, no Redis (memory cache, disk queues), Gitea Actions off, Git over HTTPS only, Keycloak login.
+namespace: gitea
+deployment: gitea
 chartRepo: https://dl.gitea.com/charts/
 chart: gitea
+version: 12.7.0
+previousVersion: 12.6.0
+releaseName: gitea
+valuesPath: values/gitea/values.yaml
+siteValues:
+  sarvaikam: values/gitea/site-sarvaikam.yaml
+extrasPath: extras/gitea
+requires:
+- cloudnative-pg
+accessHint: 'Run setup/gitea-secrets.sh (aio-catalog) before Enable. With a site overlay: https://gitea.<tools domain>
+  (sarvaikam: gitea.tools.sarvaikam.com, Keycloak login). Otherwise kubectl -n gitea port-forward svc/gitea-http 3000:3000
+  and sign in as gitea_admin; password: kubectl -n gitea get secret gitea-admin -o jsonpath=''{.data.password}'' | base64 -d'
+probes:
+- name: Gitea health (database and cache)
+  url: http://gitea-http.gitea.svc:3000/api/healthz
+  expect: '"status": "pass"'
+- name: Gitea web login page
+  url: http://gitea-http.gitea.svc:3000/user/login
+  expect: name="user_name"
 sso:
   mode: oidc
   clientId: aio-gitea
 license: MIT
 foundation: Independent
 homepage: https://about.gitea.com
-version: 12.7.0
-previousVersion: 12.6.0
+pinNote: Chart 12.7.0 ships Gitea 1.27.0, 12.6.0 ships 1.26.1 (rootless images from docker.gitea.com). The chart's
+  Bitnami PostgreSQL-HA and Valkey-cluster subcharts (on by default) are disabled. Rolling back across a Gitea minor
+  version after the database was migrated is not supported by Gitea; restore the Velero backup instead.

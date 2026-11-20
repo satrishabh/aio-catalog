@@ -1,0 +1,24 @@
+# SonarQube's PostgreSQL, run by the CloudNativePG operator (connector "cloudnative-pg"). SonarQube Community
+# Build 26.x supports PostgreSQL 15-18 (UTF-8, schema public), which the operator's default image satisfies.
+# The operator creates Secret sonarqube-db-app (username sonarqube, key "password") that SonarQube reads, and the
+# Service sonarqube-db-rw. Nightly Velero backups (phase 3) copy its volume.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: sonarqube-db
+  namespace: sonarqube
+spec:
+  instances: 1
+  storage:
+    size: 5Gi
+  resources:
+    requests: { cpu: 30m, memory: 160Mi }
+    limits: { memory: 512Mi }
+  postgresql:
+    parameters:
+      shared_buffers: 64MB
+      max_connections: "100"
+  bootstrap:
+    initdb:
+      database: sonarqube
+      owner: sonarqube

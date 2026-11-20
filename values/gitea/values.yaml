@@ -1,0 +1,116 @@
+# Gitea values for the "gitea" connector (chart 12.7.0 / Gitea 1.27.0; rollback target 12.6.0 / Gitea 1.26.1).
+# Installed by the AIO portal through Argo CD (app connector-gitea, namespace gitea).
+#
+# A Git server inside the cluster for teams that want their code on their own cluster. AIO's own pipelines keep
+# GitHub as the main SCM; Gitea is an extra code host. One Gitea pod (rootless image from docker.gitea.com),
+# repositories and LFS objects on a 10 Gi disk from the default StorageClass, the database on a CloudNativePG
+# cluster (extras/gitea, so the "cloudnative-pg" connector is required). The chart's Bitnami PostgreSQL and Valkey
+# subcharts are off: cache in memory, queues on the disk (LevelDB), sessions in the database. Gitea Actions is
+# off and no runner is installed. Git over HTTPS only (SSH is off: there is no TCP route into the cluster).
+#
+# Before Enable, run setup/gitea-secrets.sh once. Under Argo CD nothing may be generated at render time, so:
+#   Secret gitea-secrets: SECRET_KEY, INTERNAL_TOKEN, JWT_SECRET, LFS_JWT_SECRET (written into app.ini on the
+#                         first start only; the chart never changes them once app.ini exists)
+#   Secret gitea-admin:   username, password (local admin; the password is re-applied at every start)
+#   Secret gitea-db-app:  database password, created by CloudNativePG
+#
+# Without a site overlay Gitea is reachable in-cluster only: http://gitea-http.gitea.svc:3000 (clone URLs use it).
+# A site overlay adds the HTTPS ingress and Keycloak login (site-<site>.yaml).
+# Apps and pipelines: create a repository, then push/clone over HTTPS with a Gitea access token
+# (User settings -> Applications) as the password.
+image:
+  rootless: true
+
+replicaCount: 1
+strategy:
+  type: Recreate                       # one pod owns the ReadWriteOnce disk
+
+persistence:
+  enabled: true
+  size: 10Gi
+
+resources:
+  requests: { cpu: 50m, memory: 192Mi }
+  limits: { memory: 768Mi }
+
+initContainers:
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 512Mi }
+
+test:
+  enabled: false
+
+gitea:
+  admin:
+    existingSecret: gitea-admin        # keys username, password
+    email: gitea-admin@gitea.local
+    passwordMode: keepUpdated          # the Secret is the source of truth for the local admin
+
+  config:
+    APP_NAME: Gitea
+    server:
+      DOMAIN: gitea-http.gitea.svc
+      ROOT_URL: http://gitea-http.gitea.svc:3000/
+      DISABLE_SSH: true
+      START_SSH_SERVER: false
+      LFS_START_SERVER: true
+    database:
+      DB_TYPE: postgres
+      HOST: gitea-db-rw.gitea.svc:5432 # CloudNativePG cluster from extras/gitea
+      NAME: gitea
+      USER: gitea
+      SSL_MODE: require
+    session:
+      PROVIDER: db                     # survives restarts without Redis
+    cache:
+      ADAPTER: memory
+    queue:
+      TYPE: level
+    indexer:
+      ISSUE_INDEXER_TYPE: db
+      REPO_INDEXER_ENABLED: false
+    service:
+      DISABLE_REGISTRATION: true
+      REQUIRE_SIGNIN_VIEW: true
+    actions:
+      ENABLED: false
+    mailer:
+      ENABLED: false
+    cron.update_checker:
+      ENABLED: false
+
+  # Read by the init container that writes app.ini. The four security values are used on the first start only.
+  additionalConfigFromEnvs:
+    - name: GITEA__DATABASE__PASSWD
+      valueFrom:
+        secretKeyRef: { name: gitea-db-app, key: password }
+    - name: GITEA__SECURITY__SECRET_KEY
+      valueFrom:
+        secretKeyRef: { name: gitea-secrets, key: SECRET_KEY }
+    - name: GITEA__SECURITY__INTERNAL_TOKEN
+      valueFrom:
+        secretKeyRef: { name: gitea-secrets, key: INTERNAL_TOKEN }
+    - name: GITEA__OAUTH2__JWT_SECRET
+      valueFrom:
+        secretKeyRef: { name: gitea-secrets, key: JWT_SECRET }
+    - name: GITEA__SERVER__LFS_JWT_SECRET
+      valueFrom:
+        secretKeyRef: { name: gitea-secrets, key: LFS_JWT_SECRET }
+
+  livenessProbe:
+    enabled: true
+    tcpSocket: { port: http }
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    failureThreshold: 10
+
+# Bitnami subcharts off (their free images were withdrawn); see database/cache/queue above.
+postgresql-ha:
+  enabled: false
+postgresql:
+  enabled: false
+valkey-cluster:
+  enabled: false
+valkey:
+  enabled: false

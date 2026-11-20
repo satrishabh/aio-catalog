@@ -1,0 +1,41 @@
+# Site overrides for sarvaikam.com (AKS): Jitsi Meet at https://jitsi-meet.tools.sarvaikam.com behind the AIO SSO
+# gate (oauth2-proxy + Keycloak realm aio; see sso/README.md), and the video bridge's media on UDP 10000.
+#
+# Media path: the bridge gets its own LoadBalancer Service for UDP 10000 that shares the ingress public IP
+# (static Azure public IP aio-ingress-public-ip, 52.140.55.184, in MC_creative_creative_southindia; the Traefik
+# Service holds TCP 80/443 on it, so the ports do not clash). The Azure cloud provider adds the load-balancer rule
+# and the NSG rule for UDP 10000 itself. No extra public IP is created or paid for. The bridge advertises that
+# address (publicIPs) instead of asking a STUN server. If the ingress public IP is ever replaced, change publicIPs here.
+# externalTrafficPolicy Local: Azure sends UDP only to the node that runs the bridge and the bridge sees real client
+# addresses (no SNAT), which ICE handles best.
+#
+# Login: the gate covers the whole site including /http-bind (BOSH signalling, same-origin XHR that carries the gate
+# cookie). The gate cookie lasts 12 h (values/oauth2-proxy, cookie-expire); if it expires during a meeting the next
+# BOSH request is redirected to Keycloak and fails, and the person reloads the page to sign in again. The gate admits
+# client role aio-admin of aio-tools-sso only (allowed-role), so aio-business users cannot join meetings.
+publicURL: https://jitsi-meet.tools.sarvaikam.com
+
+web:
+  ingress:
+    enabled: true
+    ingressClassName: aio-azure
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-azure
+      traefik.ingress.kubernetes.io/router.middlewares: aio-ingress-sso@kubernetescrd
+    hosts:
+      - host: jitsi-meet.tools.sarvaikam.com
+        paths: ["/"]
+    tls:
+      - secretName: jitsi-meet-tools-tls
+        hosts: [jitsi-meet.tools.sarvaikam.com]
+
+jvb:
+  publicIPs:
+    - 52.140.55.184
+  service:
+    enabled: true
+    type: LoadBalancer
+    externalTrafficPolicy: Local
+    annotations:
+      service.beta.kubernetes.io/azure-load-balancer-resource-group: MC_creative_creative_southindia
+      service.beta.kubernetes.io/azure-pip-name: aio-ingress-public-ip

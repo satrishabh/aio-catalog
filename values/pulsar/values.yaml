@@ -1,0 +1,88 @@
+# Apache Pulsar values for the "pulsar" connector (chart 4.8.0 / Pulsar 5.0.0; rollback target chart 4.7.0 /
+# Pulsar 4.0.12). Installed by the AIO portal through Argo CD (app connector-pulsar, namespace pulsar).
+#
+# Installs ONE shared Pulsar in standalone mode: ZooKeeper (metadata), BookKeeper (storage) and the broker run in a
+# single JVM in one Deployment (pulsar-standalone) with a 10 Gi disk from the default StorageClass. This is the
+# smallest layout the official chart supports. The distributed layout needs ~5 GiB of memory requests with the
+# chart defaults (3 ZooKeeper, 4 BookKeeper, 3 brokers, 3 proxies, toolset, autorecovery) and still ~1.8 GiB at one
+# replica each (6 pods, 3 disks); standalone requests 896 Mi. Pulsar has no Apache-published operator, so apps
+# cannot get their own clusters on demand: they share this one and are separated by Pulsar tenants, namespaces and
+# token roles (Pulsar is built for that).
+# Standalone has no replication: one disk, one pod, a short outage on every restart. Fine for dev/staging and small
+# internal workloads; for HA production traffic use Kafka (Strimzi, phase 6) or a full Pulsar layout on bigger nodes.
+#
+# Security: JWT token authentication and authorization are on. Before Enable, run setup/pulsar-secrets.sh
+# (aio-catalog). It creates the RSA signing keys (Secret pulsar-token-asymmetric-key) and the super-user token
+# (Secret pulsar-token-admin) once and never replaces them. The private key stays in that Secret (the script
+# reads it only to sign app tokens, in a private temp directory).
+# The chart's own key generator (a hook Job using the alpine/k8s image and Helm lookup) is not used.
+#
+# How an app uses it (example: app "shop" in namespace dev):
+#   1. APP_ROLE=shop APP_NAMESPACE=dev bash setup/pulsar-secrets.sh
+#        -> Secret dev/pulsar-token-shop (key TOKEN), a token for role "shop"
+#   2. Give the role its own tenant (once, as admin):
+#        kubectl -n pulsar exec deploy/pulsar-standalone -- bin/pulsar-admin \
+#          --auth-plugin org.apache.pulsar.client.impl.auth.AuthenticationToken \
+#          --auth-params file:///pulsar/tokens/client/token \
+#          tenants create shop --admin-roles shop --allowed-clusters pulsar
+#        ... then: namespaces create shop/orders   (same auth flags)
+#   3. The app connects to pulsar://pulsar-standalone.pulsar.svc:6650 (admin REST: http://pulsar-standalone.pulsar.svc:8080)
+#      with token auth, the token read from Secret pulsar-token-shop, and uses topics persistent://shop/orders/<topic>.
+# Backups: Velero (phase 3) copies the volume (crash-consistent).
+
+clusterName: pulsar              # the Pulsar cluster name (used in --allowed-clusters)
+defaultPulsarImageRepository: apachepulsar/pulsar   # official image (chart 4.7.0 defaults to the larger pulsar-all)
+
+standalone:
+  enabled: true                  # suppresses ZooKeeper, BookKeeper, broker and autorecovery StatefulSets
+  podMonitor:
+    enabled: false               # turn on when Prometheus is enabled
+  securityContext:               # chart 4.8.0+: the image runs as uid 10000, group 0; make the new disk writable
+    fsGroup: 0
+    fsGroupChangePolicy: OnRootMismatch
+  resources:
+    requests: { cpu: 250m, memory: 896Mi }
+    limits: { memory: 1280Mi }
+  volumes:
+    data:
+      size: 10Gi                 # default StorageClass; PVC kept on uninstall (helm.sh/resource-policy: keep)
+  configData:
+    PULSAR_MEM: >
+      -Xms256m -Xmx384m -XX:MaxDirectMemorySize=256m
+
+components:
+  zookeeper: false
+  oxia: false
+  bookkeeper: false
+  autorecovery: false
+  broker: false
+  functions: false               # Pulsar Functions off (would add a worker and a function runtime)
+  function_worker: false
+  proxy: false                   # clients reach the standalone broker Service directly
+  toolset: false                 # use kubectl exec into pulsar-standalone for pulsar-admin
+  dekaf: false
+
+auth:
+  authentication:
+    enabled: true
+    jwt:
+      enabled: true
+      usingSecretKey: false      # RS256 key pair: the broker only mounts the public key
+      generateSecrets:
+        enabled: false           # keys come from setup/pulsar-secrets.sh
+  authorization:
+    enabled: true
+  superUsers:
+    broker: broker-admin
+    proxy: proxy-admin
+    client: admin                # the token in Secret pulsar-token-admin
+
+proxy:
+  podMonitor:
+    enabled: false               # chart 4.7.0 renders the proxy PodMonitor even with the proxy off
+
+victoria-metrics-k8s-stack:
+  enabled: false                 # the platform's Prometheus (phase 4) scrapes instead
+
+affinity:
+  anti_affinity: false           # one pod

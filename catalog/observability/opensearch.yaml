@@ -1,13 +1,33 @@
 id: opensearch
 name: OpenSearch
 category: Observability
-kind: planned
+kind: managed
 phase: '7'
-description: Search and log analytics (open-source fork of Elasticsearch, which is no longer OSI-only).
-chartRepo: https://opensearch-project.github.io/helm-charts
-chart: opensearch
+description: 'Search engine for apps (full-text, faceted and vector search), via the OpenSearch Kubernetes Operator:
+  an app gets its own OpenSearch cluster from one small OpenSearchCluster manifest in its namespace, with the
+  security plugin on, an admin password from a setup script and TLS from a cert-manager CA (no demo users or
+  certificates). Installs only the operator; no cluster runs until an app declares one. No privileged sysctl on
+  the nodes. Any cloud: data on disks from the default StorageClass. Platform logs stay in Loki.'
+namespace: opensearch-operator
+deployment: opensearch-operator
+chartRepo: https://opensearch-project.github.io/opensearch-k8s-operator
+chart: opensearch-operator
+version: 3.0.14
+previousVersion: 3.0.12
+releaseName: opensearch-operator
+valuesPath: values/opensearch/values.yaml
+extrasPath: extras/opensearch
+requires:
+- cert-manager
+accessHint: 'kubectl get opensearchclusters -A. A cluster for an app: run setup/opensearch-cluster-secrets.sh <ns>
+  <cluster> (aio-catalog), then apply the example in values/opensearch/values.yaml; the app uses https://<cluster>.<ns>.svc:9200
+  and trusts ca.crt from Secret <cluster>-ca.'
+probes:
+- name: Operator ready
+  url: http://opensearch-operator-health.opensearch-operator.svc:8081/readyz
+  expect: ok
 license: Apache-2.0
-foundation: Linux Foundation
+foundation: Linux Foundation (OpenSearch Software Foundation)
 homepage: https://opensearch.org
-version: 3.9.0
-previousVersion: 3.8.0
+pinNote: 'Operator chart repo (opensearch-k8s-operator), not the plain opensearch chart. The rollback target 3.0.12
+  runs operator image 3.0.0-beta (its chart appVersion); the charts are otherwise identical.'

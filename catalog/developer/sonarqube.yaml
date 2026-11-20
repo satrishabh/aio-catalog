@@ -1,13 +1,41 @@
 id: sonarqube
 name: SonarQube Community Build
 category: Developer
-kind: planned
+kind: managed
 phase: '7'
-description: Static code quality and security analysis.
+description: Static code quality and security analysis (bugs, code smells, vulnerabilities, coverage, quality gates)
+  for 30+ languages; the AIO pipeline sends each analysis with a token. Community Build (LGPL) only. Any cloud; one
+  pod with about 2 GiB of memory (web, compute engine and embedded Elasticsearch) and a 5 Gi disk, database on
+  CloudNativePG, no privileged node changes. On a site the UI sits behind the AIO SSO gate.
+namespace: sonarqube
+deployment: sonarqube
 chartRepo: https://SonarSource.github.io/helm-chart-sonarqube
 chart: sonarqube
+version: 2026.5.1004
+previousVersion: 2026.5.1003
+releaseName: sonarqube
+valuesPath: values/sonarqube/values.yaml
+siteValues:
+  sarvaikam: values/sonarqube/site-sarvaikam.yaml
+extrasPath: extras/sonarqube
+requires:
+- cloudnative-pg
+accessHint: 'Run setup/sonarqube-secrets.sh (aio-catalog) before Enable, and again once SonarQube is ready (checks
+  the admin password, creates the CI token). First start takes a few minutes. With a site overlay:
+  https://sonarqube.<tools domain> (sarvaikam: sonarqube.tools.sarvaikam.com, behind the SSO gate, then SonarQube
+  login). Otherwise kubectl -n sonarqube port-forward svc/sonarqube 9000:9000 and open http://localhost:9000. Admin
+  password: kubectl -n sonarqube get secret sonarqube-admin -o jsonpath=''{.data.password}'' | base64 -d. CI: scanner
+  to http://sonarqube.sonarqube.svc:9000 with SONAR_TOKEN from Secret sonarqube/sonarqube-ci-token (key token)'
+probes:
+- name: SonarQube up (web, compute engine, Elasticsearch, database)
+  url: http://sonarqube.sonarqube.svc:9000/api/system/status
+  expect: '"status":"UP"'
+sso:
+  mode: proxy
 license: LGPL-3.0
 foundation: Independent (SonarSource)
 homepage: https://www.sonarsource.com/open-source-editions
-version: 2026.5.1003
-previousVersion: 2026.5.1002
+pinNote: 'Image sonarqube:26.9.0.129388-community (Docker Hub, SonarSource''s registry), set by community.buildNumber;
+  the chart versions follow the commercial Server releases, so check the Community build number when moving the
+  chart. The Community Build has no OIDC login (only a third-party plugin), hence sso.mode proxy; its built-in SAML
+  login could be wired to Keycloak later. Needs ~2 GiB memory.'

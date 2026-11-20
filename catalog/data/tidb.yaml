@@ -1,9 +1,31 @@
 id: tidb
 name: TiDB Operator
 category: Data
-kind: planned
+kind: managed
 phase: '7'
-description: Distributed MySQL-compatible database.
+description: 'Distributed MySQL-compatible database through PingCAP''s TiDB Operator: an app gets its own TiDB
+  cluster (PD + TiKV + TiDB) from one TidbCluster manifest in its namespace. Installs only the operator (watches all
+  namespaces) and its CRDs; no TiDB cluster runs until an app declares one. HEAVY: the smallest dev cluster requests
+  about 1.2 CPU / 2.6 GiB memory and 12 GiB disk. Any cloud: data on disks from the default StorageClass.'
+namespace: tidb-admin
+deployment: tidb-controller-manager
+chartRepo: https://charts.pingcap.com
+chart: tidb-operator
+version: v1.6.6
+previousVersion: v1.6.5
+releaseName: tidb-operator
+valuesPath: values/tidb/values.yaml
+extrasPath: extras/tidb
+accessHint: 'kubectl get tidbcluster -A. A TiDB cluster for an app: see the 1 PD + 1 TiKV + 1 TiDB example in
+  values/tidb/values.yaml (aio-catalog); the app connects with a MySQL client to <cluster>-tidb.<ns>.svc:4000.'
+probes:
+- name: Operator reconciling TidbCluster resources
+  url: http://tidb-controller-manager-metrics.tidb-admin.svc:6060/metrics
+  expect: controller="tidbcluster"
+pinNote: 'TiDB Operator v1.6 from charts.pingcap.com (PingCAP); images pingcap/tidb-operator and
+  pingcap/tidb-backup-manager at the chart version (Docker Hub, PingCAP). The CRDs are not in the chart: extras/tidb/crds.yaml
+  is the v1.6.6 release crd.yaml (2.9 MB) and must be replaced when the version moves. Operator v2 is OCI-only and
+  not used. v1.7.0 is still alpha.'
 license: Apache-2.0
 foundation: Independent (PingCAP)
 origin: China (PingCAP)

@@ -1,13 +1,31 @@
 id: erpnext
 name: ERPNext
 category: Business
-kind: planned
+kind: managed
 phase: '7'
-description: 'ERP on the Frappe framework: accounting, HR and payroll, inventory, manufacturing, projects. Strong fit
-  for Indian businesses (GST reports built in). The Frappe chart brings its own MariaDB and Redis; it needs a
-  ReadWriteMany volume for sites, so plan the storage class before promotion.'
+description: 'ERP on the Frappe framework: accounting with Indian GST reports, HR and payroll, inventory, manufacturing,
+  projects. One site for the company, on official images only: MariaDB from the chart''s own StatefulSet, two small
+  Valkeys, files on one ReadWriteOnce disk (all Frappe pods share a node). About 1.5 GiB memory requested. Keycloak
+  login is configured inside ERPNext.'
+namespace: erpnext
+deployment: erpnext-gunicorn
 chartRepo: https://helm.erpnext.com
 chart: erpnext
+version: 8.0.91
+previousVersion: 8.0.90
+releaseName: erpnext
+valuesPath: values/erpnext/values.yaml
+siteValues:
+  sarvaikam: values/erpnext/site-sarvaikam.yaml
+extrasPath: extras/erpnext
+accessHint: 'Run setup/erpnext-secrets.sh (aio-catalog) before Enable (sarvaikam: with SITE_URL=https://erpnext.tools.sarvaikam.com).
+  The first sync creates the site (5-10 minutes); sign in as Administrator and finish the setup wizard. With a site overlay: https://erpnext.<tools domain> (sarvaikam: erpnext.tools.sarvaikam.com).
+  Otherwise kubectl -n erpnext port-forward svc/erpnext 8080:8080. User Administrator, password: kubectl -n erpnext
+  get secret erpnext -o jsonpath=''{.data.admin-password}'' | base64 -d'
+probes:
+- name: ERPNext site answers (gunicorn, database, site "erpnext")
+  url: http://erpnext.erpnext.svc:8080/api/method/frappe.ping
+  expect: pong
 sso:
   mode: oidc
   clientId: aio-erpnext
@@ -15,3 +33,7 @@ license: GPL-3.0
 foundation: Independent (Frappe Technologies)
 origin: India
 homepage: https://erpnext.com
+pinNote: Chart from frappe/helm (Frappe's own). Its Bitnami subcharts are off; MariaDB is the chart's mariadb-sts
+  (official mariadb:11.8.8), Redis is the official valkey-io chart (valkey/valkey:8.1.11). The ERPNext image is pinned
+  in values (image.tag) and in extras/erpnext/site-job.yaml; bump both with the chart, the site job then runs bench
+  migrate. The chart's own jobs are off because their names contain the render time.
