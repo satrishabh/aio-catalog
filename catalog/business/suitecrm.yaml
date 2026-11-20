@@ -3,9 +3,11 @@ name: SuiteCRM
 category: Business
 kind: planned
 phase: '7'
-description: 'Sales and customer management (leads, opportunities, cases, campaigns). There is no maintained official
-  Helm chart (the Bitnami chart is deprecated), so promotion needs our own chart under extras/ built on the official
-  image, plus MariaDB.'
+description: 'Sales and customer management (leads, opportunities, cases, campaigns). Stays planned: SalesAgility
+  publishes neither a Helm chart nor a container image (checked November 2026: no chart or image in the SuiteCRM or
+  salesagility GitHub organisations or on Docker Hub); the only maintained packaging is Bitnami''s chart and image, which the catalog
+  excludes, and the other charts are unofficial third-party ones. Promotion needs an official chart and image from
+  the project.'
 sso:
   mode: oidc
   clientId: aio-suitecrm

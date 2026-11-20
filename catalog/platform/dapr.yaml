@@ -1,13 +1,32 @@
 id: dapr
 name: Dapr
 category: Platform
-kind: planned
+kind: managed
 phase: '7'
-description: 'Building blocks for microservices: pub/sub, state, workflows, secrets.'
+description: 'Building blocks for microservices: pub/sub, state, service invocation with mTLS, workflows, jobs and
+  secrets through a sidecar, so apps stay portable across brokers and stores. Installs the control plane only
+  (non-HA); an app opts in with the pod annotation dapr.io/enabled: "true" and declares its Components (e.g. on
+  Valkey or PostgreSQL). Any cloud; the scheduler keeps jobs and reminders on three 1 Gi disks.'
+namespace: dapr-system
+deployment: dapr-operator
 chartRepo: https://dapr.github.io/helm-charts/
 chart: dapr
+version: 1.19.1
+previousVersion: 1.19.0
+releaseName: dapr
+valuesPath: values/dapr/values.yaml
+accessHint: 'kubectl get components.dapr.io,configurations.dapr.io -A. An app opts in with pod annotations dapr.io/enabled:
+  "true", dapr.io/app-id and dapr.io/app-port (example in values/dapr/values.yaml, aio-catalog); its sidecar listens on
+  localhost:3500. Control plane: kubectl -n dapr-system get pods'
+probes:
+- name: Sentry has its certificate authority
+  url: http://dapr-sentry.dapr-system.svc:9090/
+  expect: dapr_sentry_issuercert_expiry_timestamp
+- name: Placement service is leader (actors, workflows)
+  url: http://dapr-placement-server.dapr-system.svc:9090/
+  expect: dapr_placement_leader_status 1
 license: Apache-2.0
 foundation: CNCF (graduated)
 homepage: https://dapr.io
-version: 1.19.1
-previousVersion: 1.19.0
+pinNote: The Dapr Helm index rewrites every entry's created date when it is republished, so pin.py cannot judge age
+  from it; 1.19.1 (2026-10-31) and 1.19.0 (2026-10-22) are dated from the GitHub releases of dapr/dapr.

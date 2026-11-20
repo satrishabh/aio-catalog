@@ -8,13 +8,13 @@
   "implicitFlowEnabled": false,
   "serviceAccountsEnabled": false,
   "redirectUris": [
-    "https://erpnext.tools.sarvaikam.com/oauth2/callback"
+    "https://erpnext.tools.sarvaikam.com/api/method/frappe.integrations.oauth2_logins.login_via_keycloak"
   ],
   "webOrigins": [
     "https://erpnext.tools.sarvaikam.com"
   ],
   "attributes": {
-    "pkce.code.challenge.method": "S256",
+    "pkce.code.challenge.method": "",
     "post.logout.redirect.uris": "https://erpnext.tools.sarvaikam.com/*"
   },
   "defaultClientScopes": [

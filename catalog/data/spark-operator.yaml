@@ -1,13 +1,32 @@
 id: spark-operator
 name: Apache Spark (Kubeflow Spark Operator)
 category: Data
-kind: planned
+kind: managed
 phase: '7'
-description: Runs Apache Spark jobs on Kubernetes.
+description: 'Batch and streaming Spark jobs as Kubernetes resources: an app declares a SparkApplication (or a
+  cron-scheduled ScheduledSparkApplication) in dev or staging and the operator runs its driver and executor pods,
+  which exit when the job ends. Installs only the operator and its webhook; nothing runs until a job is declared.
+  Jobs use the official Apache Spark images. Any cloud.'
+namespace: spark-operator
+deployment: spark-operator-controller
 chartRepo: https://kubeflow.github.io/spark-operator
 chart: spark-operator
-license: Apache-2.0
-foundation: Apache Spark / Kubeflow (CNCF)
-homepage: https://spark.apache.org
 version: 2.5.2
 previousVersion: 2.5.1
+releaseName: spark-operator
+valuesPath: values/spark-operator/values.yaml
+extrasPath: extras/spark-operator
+accessHint: 'kubectl get sparkapplications,scheduledsparkapplications -n dev (or staging). A job for an app: see the
+  SparkPi example in values/spark-operator/values.yaml (aio-catalog); driver pods run as ServiceAccount
+  spark-operator-spark. Driver logs: kubectl -n dev logs <app>-driver; Spark UI: kubectl -n dev port-forward
+  svc/<app>-ui-svc 4040.'
+probes:
+- name: SparkApplication controller running
+  url: http://spark-operator-controller-metrics.spark-operator.svc:8080/metrics
+  expect: controller="sparkapplication"
+license: Apache-2.0
+foundation: Apache Spark / Kubeflow (CNCF)
+homepage: https://www.kubeflow.org/docs/components/spark-operator/
+pinNote: Jobs are allowed in dev and staging only (spark.jobNamespaces); the chart writes a ServiceAccount, Roles and
+  RoleBindings into those two namespaces, so the connectors AppProject must allow dev and staging (tools/build.py
+  EXTRA_NAMESPACES). Operator images from ghcr.io/kubeflow/spark-operator.

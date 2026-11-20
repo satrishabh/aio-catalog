@@ -1,0 +1,114 @@
+# Temporal values for the "temporal" connector (chart 1.8.0 / Temporal server 1.32.2, UI 2.56.1;
+# rollback target 1.7.0 / server 1.32.0, UI 2.54.1). Official chart from temporalio (https://go.temporal.io/helm-charts).
+# Installed by the AIO portal through Argo CD (app connector-temporal, namespace temporal).
+#
+# Durable workflow execution: one pod each of frontend, history, matching and worker, the Web UI and the admin-tools
+# pod (temporal CLI). Persistence on PostgreSQL only: CloudNativePG cluster temporal-db (extras/temporal, so the
+# "cloudnative-pg" connector is required) with two databases, "temporal" (default store) and "temporal_visibility"
+# (visibility store, SQL visibility on PostgreSQL 12+). No Cassandra, Elasticsearch, MySQL, Prometheus or Grafana:
+# chart 1.x bundles none of them.
+#
+# Secrets: none to create for the in-cluster install. The database password comes from Secret temporal-db-app,
+# written by CloudNativePG. The Keycloak login of a site overlay needs Secret temporal-oidc (setup/temporal-secrets.sh).
+#
+# Schema: the chart's schema job (temporal-sql-tool setup-schema -v 0.0 + update-schema, both idempotent) runs as an
+# Argo CD Sync hook on every sync, next to the CloudNativePG cluster and the servers; it retries until the database
+# is up, and the servers restart until the schema exists (first install takes a few minutes). The namespace job
+# creates Temporal namespace "default" (3 days retention) when it is missing, also a Sync hook.
+#
+# numHistoryShards is 16 and can NEVER change after the first start (it is written into the database). A cluster
+# that outgrows it needs a new Temporal with a new database and a migration of running workflows.
+#
+# Apps connect their Temporal SDK workers and clients to temporal-frontend.temporal.svc:7233 (gRPC, no TLS, no auth:
+# anything in the cluster can reach it), namespace "default". More namespaces:
+#   kubectl -n temporal exec deploy/temporal-admintools -- temporal operator namespace create -n <name> --retention 7d
+# HTTP API: http://temporal-frontend.temporal.svc:7243/api/v1/... Without a site overlay the Web UI is in-cluster
+# only (port-forward); a site overlay adds HTTPS and Keycloak login (site-<site>.yaml).
+server:
+  replicaCount: 1
+  config:
+    logLevel: info
+    persistence:
+      defaultStore: default
+      visibilityStore: visibility
+      numHistoryShards: 16             # fixed forever after the first start
+      datastores:
+        default:
+          sql:
+            createDatabase: false      # the databases come from CloudNativePG (extras/temporal)
+            manageSchema: true
+            pluginName: postgres12_pgx
+            databaseName: temporal
+            connectAddr: temporal-db-rw.temporal.svc:5432
+            connectProtocol: tcp
+            user: temporal
+            existingSecret: temporal-db-app
+            secretKey: password
+            maxConns: 10
+            maxIdleConns: 10
+            maxConnLifetime: 1h
+        visibility:
+          sql:
+            createDatabase: false
+            manageSchema: true
+            pluginName: postgres12_pgx
+            databaseName: temporal_visibility
+            connectAddr: temporal-db-rw.temporal.svc:5432
+            connectProtocol: tcp
+            user: temporal
+            existingSecret: temporal-db-app
+            secretKey: password
+            maxConns: 5
+            maxIdleConns: 5
+            maxConnLifetime: 1h
+    namespaces:
+      create: true
+      useHelmHooks: true               # stable job name; the Argo CD hook annotation below takes precedence
+      namespace:
+        - name: default
+          retention: 3d
+  frontend:
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { memory: 512Mi }
+  history:
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { memory: 768Mi }
+  matching:
+    resources:
+      requests: { cpu: 50m, memory: 128Mi }
+      limits: { memory: 512Mi }
+  worker:
+    resources:
+      requests: { cpu: 30m, memory: 128Mi }
+      limits: { memory: 512Mi }
+
+admintools:
+  enabled: true                        # idle pod with the temporal CLI and temporal-sql-tool
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 256Mi }
+
+web:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests: { cpu: 20m, memory: 64Mi }
+    limits: { memory: 256Mi }
+  additionalEnv:
+    - name: TEMPORAL_DISABLE_NEWS_FETCH
+      value: "true"
+
+# Schema and namespace jobs: Argo CD Sync hooks (with Helm hooks they would be PreSync and wait forever for the
+# database, which Argo CD only creates in the Sync phase). Both are safe to rerun.
+schema:
+  useHelmHooks: true                   # stable job names (temporal-schema, temporal-namespace)
+  jobAnnotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  backoffLimit: 100
+  ttlSecondsAfterFinished: 86400
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { memory: 256Mi }

@@ -1,16 +1,40 @@
 id: jitsi-meet
 name: Jitsi Meet
 category: Developer
-kind: planned
+kind: managed
 phase: '7'
-description: 'Video meetings in the browser. Needs a public UDP port (10000) for media, which the shared HTTP ingress
-  cannot carry: a separate LoadBalancer Service is required.'
+description: 'Video meetings in the browser (web app, Prosody signalling, Jicofo, one video bridge; no recording,
+  no database, no disk). Media needs UDP 10000 reachable from users, which the HTTP ingress cannot carry: without a
+  site overlay only two-person (peer-to-peer) calls work; the sarvaikam overlay gives the bridge a UDP LoadBalancer
+  on the ingress IP. On a site the page sits behind the AIO SSO gate (internal use, no anonymous guests).'
+namespace: jitsi-meet
+deployment: jitsi-meet-jicofo
 chartRepo: https://jitsi-contrib.github.io/jitsi-helm
 chart: jitsi-meet
+version: 3.12.0
+previousVersion: 3.11.1
+releaseName: jitsi-meet
+valuesPath: values/jitsi-meet/values.yaml
+siteValues:
+  sarvaikam: values/jitsi-meet/site-sarvaikam.yaml
+extrasPath: extras/jitsi-meet
+accessHint: 'Run setup/jitsi-meet-secrets.sh (aio-catalog) before Enable. With a site overlay: https://jitsi-meet.<tools
+  domain> (sarvaikam: jitsi-meet.tools.sarvaikam.com, behind the SSO gate; media on UDP 10000 of the ingress IP).
+  Otherwise kubectl -n jitsi-meet port-forward svc/jitsi-meet-web 8080:8000 and open http://localhost:8080 (only
+  two-person calls work without the UDP overlay). No admin account: anyone who reaches the page can open a room.'
+probes:
+- name: Web app and Prosody (BOSH signalling)
+  url: http://jitsi-meet-web.jitsi-meet.svc:8000/http-bind
+  expect: BOSH
+- name: Jicofo sees a working video bridge
+  url: http://jitsi-meet-jicofo-rest.jitsi-meet.svc:8888/stats
+  expect: '"operational_bridge_count":1'
 sso:
   mode: proxy
 license: Apache-2.0
 foundation: Independent (8x8)
 homepage: https://jitsi.org
-version: 3.12.0
-previousVersion: 3.11.1
+pinNote: 'Chart from jitsi-contrib; images ghcr.io/jitsi/{web,prosody,jicofo,jvb} at the chart appVersion. Jitsi''s own
+  login (enableAuth) is off: access control is the SSO gate. The bridge''s UDP exposure is cloud-specific and lives in
+  the site overlay (Azure: shared static public IP via azure-pip-name); other sites need their own UDP LoadBalancer
+  overlay with jvb.publicIPs. The bridge runs as Deployment jitsi-meet-jvb-0 with strategy Recreate.'

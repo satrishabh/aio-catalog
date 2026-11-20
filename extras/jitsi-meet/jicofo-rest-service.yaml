@@ -1,0 +1,19 @@
+# In-cluster Service for Jicofo's REST port (8888), which the chart does not expose. Used by the AIO probe
+# GET /stats: "operational_bridge_count":1 proves Prosody, Jicofo and the video bridge are connected.
+# Reachable only from this namespace and from the AIO platform (network-policies.yaml).
+apiVersion: v1
+kind: Service
+metadata:
+  name: jitsi-meet-jicofo-rest
+  namespace: jitsi-meet
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: jitsi-meet
+    app.kubernetes.io/instance: jitsi-meet
+    app.kubernetes.io/component: jicofo
+  ports:
+    - name: http
+      port: 8888
+      targetPort: 8888
+      protocol: TCP

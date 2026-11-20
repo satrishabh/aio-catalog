@@ -1,0 +1,21 @@
+# Plain-HTTP Service for the operator's health port (8081: /healthz, /readyz), so the AIO connector Test can reach
+# it. The chart's only Services are the metrics port (8443, HTTPS with Kubernetes token auth) and the webhook (443,
+# self-signed), which the Test cannot use.
+apiVersion: v1
+kind: Service
+metadata:
+  name: opensearch-operator-health
+  namespace: opensearch-operator
+  labels:
+    app.kubernetes.io/name: opensearch-operator
+    app.kubernetes.io/component: health
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: opensearch-operator
+    app.kubernetes.io/instance: opensearch-operator
+  ports:
+    - name: health
+      port: 8081
+      targetPort: 8081
+      protocol: TCP

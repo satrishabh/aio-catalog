@@ -1,9 +1,29 @@
 id: camel-k
 name: Apache Camel K
 category: Workflow
-kind: planned
+kind: managed
 phase: '7'
-description: Low-code integrations (300+ connectors) running as serverless routes.
+description: 'Low-code integrations on Kubernetes: Camel routes and Pipes that join 300+ ready-made connectors
+  (Kamelets: Kafka, HTTP, databases, SaaS APIs) without writing a service. Installs only the operator (watches all
+  namespaces). Integrations run from images the AIO pipeline built; building them in the cluster needs a registry
+  set up after Enable (setup/camel-k-registry.sh), off by default. Any cloud; no disks.'
+namespace: camel-k
+deployment: camel-k-operator
+chartRepo: https://apache.github.io/camel-k/charts
+chart: camel-k
+version: 2.11.0
+previousVersion: 2.10.2
+releaseName: camel-k
+valuesPath: values/camel-k/values.yaml
+extrasPath: extras/camel-k
+accessHint: 'kubectl get integrations,pipes -A; kubectl -n camel-k get kamelets. Example Pipe and the registry options:
+  values/camel-k/values.yaml (aio-catalog). In-cluster builds: run setup/camel-k-registry.sh after Enable.'
+probes:
+- name: Operator controllers running
+  url: http://camel-k-operator-metrics.camel-k.svc:8080/metrics
+  expect: controller_runtime_reconcile_total{controller="integration-controller"
 license: Apache-2.0
 foundation: Apache
 homepage: https://camel.apache.org/camel-k
+pinNote: The image is docker.io/apache/camel-k, published by the Apache Camel project. 2.11.0 and 2.10.2 were
+  released on the same day (2026-08-31); 2.10.2 is the newest of the previous minor line.

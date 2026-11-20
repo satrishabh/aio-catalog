@@ -1,0 +1,21 @@
+# Plain-HTTP Service for the controller's metrics port (8080: /metrics), so the AIO connector Test can check that the
+# SparkApplication controller is running. The chart ships no Service for the controller (only for pprof).
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-operator-controller-metrics
+  namespace: spark-operator
+  labels:
+    app.kubernetes.io/name: spark-operator
+    app.kubernetes.io/component: metrics
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: spark-operator
+    app.kubernetes.io/instance: spark-operator
+    app.kubernetes.io/component: controller
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: metrics
+      protocol: TCP

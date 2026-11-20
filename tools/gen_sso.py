@@ -17,14 +17,18 @@ CALLBACK = {
     "aio-grafana": "/login/generic_oauth", "aio-argocd": "/auth/callback", "aio-harbor": "/c/oidc/callback",
     "aio-airflow": "/auth/oauth-authorized/keycloak", "aio-superset": "/oauth-authorized/keycloak",
     "aio-backstage": "/api/auth/oidc/handler/frame",
-    "aio-gitea": "/user/oauth2/aio/callback", "aio-langfuse": "/api/auth/callback/keycloak", "aio-dependency-track": "/static/oidc-callback.html",
+    "aio-gitea": "/user/oauth2/aio/callback", "aio-langfuse": "/api/auth/callback/keycloak", "aio-temporal": "/auth/sso/callback",
+    "aio-erpnext": "/api/method/frappe.integrations.oauth2_logins.login_via_keycloak", "aio-dependency-track": "/static/oidc-callback.html",
 }
 HOST = {"aio-grafana": "grafana", "aio-argocd": "argocd"}
 # Tools that read roles from a flat "groups" claim (Harbor: oidc_groups_claim / oidc_admin_group) get a mapper
 # that puts this client's roles (aio-admin, aio-business) into "groups".
-GROUPS_CLAIM = {"aio-harbor", "aio-dependency-track", "aio-airflow", "aio-superset"}
+GROUPS_CLAIM = {"aio-harbor", "aio-dependency-track", "aio-airflow", "aio-superset", "aio-gitea"}
 # Tools whose login runs in the browser (authorization code + PKCE, no client secret): public Keycloak clients.
 PUBLIC = {"aio-dependency-track"}
+# Keycloak then requires PKCE (S256): only for tools whose login sends it. Gitea and Harbor (Go oauth2 without
+# code_challenge) and Argo CD (PKCE off by default) do not, and Keycloak would reject their logins.
+PKCE = {"aio-grafana", "aio-airflow", "aio-superset", "aio-dependency-track", "aio-langfuse", "aio-tools-sso"}
 
 
 def groups_mapper(client_id):
@@ -56,7 +60,8 @@ def client(client_id, host, callback, description):
         "serviceAccountsEnabled": False,
         "redirectUris": [f"https://{host}.{DOMAIN}{callback}"],
         "webOrigins": [f"https://{host}.{DOMAIN}"],
-        "attributes": {"pkce.code.challenge.method": "S256", "post.logout.redirect.uris": f"https://{host}.{DOMAIN}/*"},
+        "attributes": {"pkce.code.challenge.method": "S256" if client_id in PKCE else "",  # "" clears it on update
+                       "post.logout.redirect.uris": f"https://{host}.{DOMAIN}/*"},
         # Same role names as the AIO portal; assign them to users or groups in realm "aio"
         "defaultClientScopes": ["openid", "email", "profile", "roles"],
         "x-aio-roles": ["aio-admin", "aio-business"],

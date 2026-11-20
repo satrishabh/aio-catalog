@@ -1,0 +1,19 @@
+# Plain-HTTP Service for the operator's metrics port, so the AIO connector Test can check that the operator's
+# controllers are running (the chart creates no Service).
+apiVersion: v1
+kind: Service
+metadata:
+  name: camel-k-operator-metrics
+  namespace: camel-k
+  labels:
+    app: camel-k
+    camel.apache.org/component: operator
+spec:
+  type: ClusterIP
+  selector:
+    name: camel-k-operator
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: 8080
+      protocol: TCP

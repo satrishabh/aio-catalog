@@ -8,3 +8,8 @@ license: Apache-2.0
 foundation: Apache
 origin: China (JD.com)
 homepage: https://shardingsphere.apache.org
+pinNote: 'Kept planned: the only Apache-published Kubernetes packaging is apache/shardingsphere-on-cloud (chart repo
+  https://apache.github.io/shardingsphere-on-cloud). Its last release (operator chart 0.3.0, Proxy 5.4.0) is from
+  July 2023 and the repository''s last commit is July 2024, so the operator is unmaintained and lags ShardingSphere
+  5.5.x. Revisit if shardingsphere-on-cloud releases again; a plain Proxy chart without an operator does not meet the
+  operators-first rule.'

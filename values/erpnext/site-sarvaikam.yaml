@@ -1,0 +1,32 @@
+# Site overrides for sarvaikam.com: ERPNext at https://erpnext.tools.sarvaikam.com.
+# Run setup/erpnext-secrets.sh with SITE_URL=https://erpnext.tools.sarvaikam.com so links in e-mails and the
+# Keycloak redirect use this address (key site-url of Secret erpnext; applied by the site job at the next sync).
+#
+# Keycloak login is configured inside ERPNext (Frappe "Social Login Key"; there is no chart or config-file
+# setting), once, as Administrator:
+#   Integrations -> Social Login Key -> New
+#     Social Login Provider: Keycloak            (fills the endpoint paths below)
+#     Enable Social Login:   on
+#     Client ID:             aio-erpnext
+#     Client Secret:         the secret of Keycloak client aio-erpnext (stored encrypted in the site database)
+#     Base URL:              https://profile.sarvaikam.com/realms/aio
+#     Auth URL Data:         {"response_type": "code", "scope": "openid email profile"}
+#     Sign ups:              Deny  (only users an admin created, matched by e-mail, can sign in)
+#   Redirect URI (Keycloak client): https://erpnext.tools.sarvaikam.com/api/method/frappe.integrations.oauth2_logins.login_via_keycloak
+# Frappe does not map Keycloak roles: an admin creates each user (same e-mail as in Keycloak) and gives ERPNext
+# roles (System Manager for aio-admin people; e.g. Accounts User / read-only roles for aio-business people).
+# The Administrator password login keeps working as a fallback.
+ingress:
+  enabled: true
+  className: aio-azure
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-azure
+  hosts:
+    - host: erpnext.tools.sarvaikam.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: erpnext-tools-tls
+      hosts:
+        - erpnext.tools.sarvaikam.com

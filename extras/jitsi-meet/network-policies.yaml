@@ -1,0 +1,39 @@
+# Prosody runs with anonymous login (Jitsi's own auth is off; the site's SSO gate is in front of the web page) and
+# Jicofo's REST port can start conferences. Neither is meant for other namespaces: only pods in jitsi-meet may reach
+# Prosody, and Jicofo's REST port is open to this namespace and to the AIO platform (probe). The web page and the
+# video bridge are not restricted here (ingress controller; UDP media from the LoadBalancer).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: jitsi-meet-prosody
+  namespace: jitsi-meet
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: jitsi-meet
+      app.kubernetes.io/component: prosody
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: jitsi-meet-jicofo
+  namespace: jitsi-meet
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: jitsi-meet
+      app.kubernetes.io/component: jicofo
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: aio-platform
+      ports:
+        - { port: 8888, protocol: TCP }

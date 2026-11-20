@@ -1,0 +1,98 @@
+# SonarQube values for the "sonarqube" connector (chart 2026.5.1004 / SonarQube Community Build 26.9.0.129388;
+# rollback target 2026.5.1003, same Community Build image). Installed by the AIO portal through Argo CD
+# (app connector-sonarqube, namespace sonarqube).
+#
+# Static code quality and security analysis. One pod (Deployment "sonarqube": web server, compute engine and an
+# embedded Elasticsearch, three JVMs) with one 5 Gi disk (search index, plugins, logs; default StorageClass). The
+# database is a CloudNativePG cluster (extras/sonarqube, so the "cloudnative-pg" connector is required); this chart
+# has no bundled PostgreSQL. Community Build only (LGPL-3.0, image sonarqube:<build>-community from Docker Hub,
+# SonarSource's registry); the Developer/Enterprise images are commercial and never used. All agentic/MCP/Vortex
+# components of the chart stay off.
+#
+# MEMORY: SonarQube needs about 2 GiB (heaps 512m web + 512m compute engine + 512m search, plus off-heap). This
+# connector requests 2 GiB and is limited to 3 GiB: the heaviest single pod in phase 7. Large projects may need a
+# bigger compute-engine heap (SONAR_CE_JAVAOPTS below) and limit.
+#
+# NODE SETTINGS: Elasticsearch asks for vm.max_map_count >= 524288. The chart's default init container sets it
+# with a privileged, root sysctl on the node (changes the whole node, needs privileged pods). It is OFF here;
+# instead Elasticsearch's bootstrap checks are disabled (sonar.es.bootstrap.checks.disable), so SonarQube starts
+# on the default 65530. That is enough for a small instance; on a big one Elasticsearch can fail with "map
+# failed". The clean fix is a node-pool setting, not this chart: AKS linuxOSConfig sysctls vm.max_map_count,
+# GKE linuxConfig sysctls, EKS/on-prem a sysctl.d file in the node image.
+#
+# Before Enable, run setup/sonarqube-secrets.sh once (secrets below); run it again once SonarQube is ready to get
+# the CI analysis token. Every secret comes from it, none from the chart or Git:
+#   Secret sonarqube-secrets: monitoring-passcode (header for /api/system/health; the chart's liveness probe)
+#   Secret sonarqube-admin:   password (random), currentPassword ("admin", the built-in default). The chart's
+#                             post-install hook job (an Argo CD PostSync hook) changes admin/admin to password as
+#                             soon as SonarQube is up, so the default never survives. Re-runs of the hook with
+#                             admin/admin gone do nothing (HTTP 401, the job still succeeds).
+#   Secret sonarqube-ci-token: token (a Global Analysis Token, run 2 of the script)
+#
+# Apps / CI: the scanner runs in the pipeline and sends the report to
+#   http://sonarqube.sonarqube.svc:9000   with SONAR_TOKEN from Secret sonarqube/sonarqube-ci-token (key token),
+# e.g. sonar-scanner -Dsonar.host.url=... -Dsonar.projectKey=<app> (token via the SONAR_TOKEN env var, never argv).
+# Use the in-cluster URL: the public URL of a site overlay is behind the SSO gate, which a scanner cannot pass.
+fullnameOverride: sonarqube
+deploymentType: Deployment             # the chart's StatefulSet mode is deprecated
+replicaCount: 1                        # never more than one SonarQube per database
+
+community:
+  enabled: true
+  buildNumber: "26.9.0.129388"         # pinned; moves with the chart
+
+monitoringPasscodeSecretName: sonarqube-secrets
+monitoringPasscodeSecretKey: monitoring-passcode
+
+jdbcOverwrite:
+  enabled: true
+  jdbcUrl: jdbc:postgresql://sonarqube-db-rw.sonarqube.svc:5432/sonarqube
+  jdbcUsername: sonarqube
+  jdbcSecretName: sonarqube-db-app     # created by CloudNativePG
+  jdbcSecretPasswordKey: password
+  jdbcPassword: ""                     # chart default "sonarPass" must not be used
+
+setAdminPassword:
+  passwordSecretName: sonarqube-admin  # keys password, currentPassword
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 64Mi }
+
+persistence:
+  enabled: true
+  size: 5Gi
+
+initSysctl:
+  enabled: false                       # no privileged node changes (see NODE SETTINGS above)
+elasticsearch:
+  bootstrapChecks: false
+initFs:
+  enabled: true                        # chown of the disk (CHOWN capability only, not privileged)
+
+initContainers:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 64Mi }
+
+env:
+  - name: SONAR_WEB_JAVAOPTS
+    value: "-Xmx512m -Xms128m"
+  - name: SONAR_CE_JAVAOPTS
+    value: "-Xmx512m -Xms128m"
+  - name: SONAR_SEARCH_JAVAOPTS
+    value: "-Xmx512m -Xms512m -XX:MaxDirectMemorySize=256m"
+  - name: SONAR_TELEMETRY_ENABLE
+    value: "false"
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 2Gi
+    ephemeral-storage: 256Mi
+  limits:
+    cpu: null
+    memory: 3Gi
+    ephemeral-storage: 2Gi
+
+tests:
+  enabled: false

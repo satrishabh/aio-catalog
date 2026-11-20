@@ -1,0 +1,103 @@
+# Jitsi Meet values for the "jitsi-meet" connector (chart 3.12.0 / Jitsi Meet stable-11248-3; rollback target 3.11.1).
+# Chart from jitsi-contrib (https://github.com/jitsi-contrib/jitsi-helm), the community org the Jitsi project points to.
+# Installed by the AIO portal through Argo CD (app connector-jitsi-meet, namespace jitsi-meet).
+#
+# Video meetings in the browser. Four pods, images from ghcr.io/jitsi (the project's registry, tag = chart appVersion):
+#   jitsi-meet-web      nginx + the web app; proxies /http-bind (BOSH) to Prosody      Deployment
+#   jitsi-meet-prosody  XMPP server (signalling), no disk: rooms are not stored      StatefulSet
+#   jitsi-meet-jicofo   conference focus: puts participants on a bridge              Deployment
+#   jitsi-meet-jvb      video bridge (media, UDP 10000)                               Deployment
+# Etherpad, Excalidraw, Jibri (recording), Jigasi (SIP), transcription, coturn and metrics exporters are off.
+# No database and no disk. Requests in total: 350m CPU, 880 MiB memory (limits: memory 2.4 GiB, CPU unlimited).
+#
+# MEDIA PATH (read this): browsers send audio/video to the bridge on UDP 10000, which the shared HTTP ingress cannot
+# carry. This base file keeps the bridge Service ClusterIP (no cloud-specific exposure), so out of the box only
+# two-person calls work (they go peer to peer, browser to browser); a third participant moves the call to the bridge,
+# which browsers outside the cluster cannot reach. A public meeting service needs a site/cloud overlay that gives
+# the bridge a UDP LoadBalancer Service and sets jvb.publicIPs to that address (see site-sarvaikam.yaml, Azure).
+# Other clouds: the same with your provider's UDP LoadBalancer (GKE/EKS: a static IP / Elastic IP annotation);
+# on-prem: MetalLB, or jvb.useHostPort with the node's public IP.
+#
+# Before Enable, run setup/jitsi-meet-secrets.sh once. It creates the XMPP component passwords (never rendered by the
+# chart, whose own default is a new random value on every render, which Argo CD would see as endless drift):
+#   jitsi-meet-jicofo-auth  JICOFO_AUTH_PASSWORD             (Jicofo -> Prosody; also read by Prosody)
+#   jitsi-meet-jvb-auth     JVB_AUTH_USER, JVB_AUTH_PASSWORD (bridge -> Prosody; also read by Prosody)
+#
+# Login: Jitsi's own auth is off (enableAuth false): anyone who reaches the web page may open a room. A site overlay
+# therefore puts the whole page behind the AIO SSO gate (oauth2-proxy + Keycloak, sso.mode proxy); signalling (BOSH
+# XHR on /http-bind) is same-origin and carries the gate cookie. Guests without an AIO account and the Jitsi mobile
+# apps cannot pass the gate: this is an internal meeting tool.
+# Without a site overlay: kubectl -n jitsi-meet port-forward svc/jitsi-meet-web 8080:8000, open http://localhost:8080.
+publicURL: http://localhost:8080        # port-forward; the site overlay sets the real URL
+tz: UTC
+enableAuth: false
+enableGuests: false
+
+websockets:
+  xmpp:
+    enabled: false                      # BOSH over XHR: plain HTTP requests through any proxy/forward-auth
+
+web:
+  replicaCount: 1
+  resources:
+    requests: { cpu: 50m, memory: 48Mi }
+    limits: { memory: 256Mi }
+
+prosody:
+  persistence:
+    enabled: false
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { memory: 256Mi }
+
+jicofo:
+  xmpp:
+    existingSecretName: jitsi-meet-jicofo-auth
+  extraEnvs:
+    JICOFO_MAX_MEMORY: 384m             # Java heap; the image default is 3 GiB
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { memory: 640Mi }
+
+jvb:
+  replicaCount: 1                       # one bridge per Service port (chart rule)
+  strategy:
+    type: Recreate                      # never two bridges behind the one UDP port during a rollout
+  xmpp:
+    user: jvb
+    existingSecretName: jitsi-meet-jvb-auth
+  # No external STUN lookup (the default asks 8x8's meet-jit-si-turnrelay.jitsi.net). The site overlay sets
+  # publicIPs; without it the bridge advertises its pod address only.
+  disableStun: true
+  service:
+    enabled: true
+    type: ClusterIP
+  extraEnvs:
+    VIDEOBRIDGE_MAX_MEMORY: 768m        # Java heap; the image default is 3 GiB
+  # The bridge forwards every participant's streams and is CPU-bound under load (roughly one vCPU per 20-40 active
+  # video participants). No CPU limit, so it can burst; raise the request for regular large meetings.
+  resources:
+    requests: { cpu: 200m, memory: 512Mi }
+    limits: { memory: 1280Mi }
+  terminationGracePeriodSeconds: 60
+  metrics:
+    enabled: false
+
+octo:
+  enabled: false
+etherpad:
+  enabled: false
+excalidraw:
+  enabled: false
+jibri:
+  enabled: false
+jigasi:
+  enabled: false
+transcriber:
+  enabled: false
+opusTranscriberProxy:
+  enabled: false
+skynet:
+  enabled: false
+coturn:
+  enabled: false
