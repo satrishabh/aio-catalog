@@ -1,6 +1,6 @@
 {
-  "clientId": "aio-appsmith",
-  "name": "Appsmith (AIO managed)",
+  "clientId": "aio-langfuse",
+  "name": "Langfuse (AIO managed)",
   "protocol": "openid-connect",
   "publicClient": false,
   "standardFlowEnabled": true,
@@ -8,14 +8,14 @@
   "implicitFlowEnabled": false,
   "serviceAccountsEnabled": false,
   "redirectUris": [
-    "https://appsmith.tools.sarvaikam.com/login/oauth2/code/oidc"
+    "https://langfuse.tools.sarvaikam.com/api/auth/callback/keycloak"
   ],
   "webOrigins": [
-    "https://appsmith.tools.sarvaikam.com"
+    "https://langfuse.tools.sarvaikam.com"
   ],
   "attributes": {
     "pkce.code.challenge.method": "S256",
-    "post.logout.redirect.uris": "https://appsmith.tools.sarvaikam.com/*"
+    "post.logout.redirect.uris": "https://langfuse.tools.sarvaikam.com/*"
   },
   "defaultClientScopes": [
     "openid",

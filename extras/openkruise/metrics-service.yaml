@@ -1,0 +1,19 @@
+# Plain-HTTP Service for kruise-manager's metrics port, so the AIO connector Test can check that the controllers
+# started (they start only after the webhook certificate is in place). The chart only exposes the webhook port.
+apiVersion: v1
+kind: Service
+metadata:
+  name: kruise-manager-metrics
+  namespace: kruise-system
+  labels:
+    app.kubernetes.io/name: kruise
+    app.kubernetes.io/component: metrics
+spec:
+  type: ClusterIP
+  selector:
+    control-plane: controller-manager
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: metrics
+      protocol: TCP

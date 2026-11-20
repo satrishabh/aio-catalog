@@ -1,0 +1,45 @@
+# Crossplane values for the "crossplane" connector (chart 2.4.3 / Crossplane 2.4.3; rollback target 2.4.2).
+# Installed by the AIO portal through Argo CD (app connector-crossplane, namespace crossplane-system).
+#
+# Installs Crossplane core only (the package manager, composition engine and RBAC manager; Crossplane installs its
+# own CRDs at start). No provider is installed, so on its own it cannot create any cloud resource and holds no
+# cloud credentials. A cloud is linked by its setup script after Enable, with keyless identity:
+#   AKS  setup/crossplane-setup-azure.sh  -> provider-family-azure (crossplane-contrib, pinned) + ClusterProviderConfig
+#        and ProviderConfig "default" (Entra Workload ID: a managed identity federated with the provider service
+#        account crossplane-system/provider-azure; Contributor on one resource group the admin chooses, nothing else)
+#   GKE  setup/crossplane-setup-gcp.sh    -> provider-family-gcp (crossplane-contrib, pinned) + ClusterProviderConfig
+#        and ProviderConfig "default" (GKE Workload Identity: the provider service account crossplane-system/
+#        provider-gcp acts as a Google service account that holds only the roles the admin names in GCP_ROLES)
+# Each script installs only the provider family; the resource providers an app needs (e.g. storage,
+# dbforpostgresql / sql) are added with PROVIDERS="..." (each one is a pod of its own, ~256Mi).
+#
+# Apps then declare managed resources in their namespace (Crossplane v2 namespaced API, e.g.
+# storage.azure.m.upbound.io/v1beta1 Account, storage.gcp.m.upbound.io/v1beta1 Bucket); they use the
+# ClusterProviderConfig "default". Check: kubectl get providers; kubectl get managed -A
+#
+# Webhooks: Crossplane registers its own validating webhooks at start, limited to Crossplane's API groups and to
+# objects labelled crossplane.io/in-use=true (Usage protection). It never intercepts pods or namespaces.
+
+replicas: 1
+
+provider:
+  packages: []                   # installed by the per-cloud setup scripts, never by default
+configuration:
+  packages: []
+function:
+  packages: []
+
+metrics:
+  enabled: true                  # :8080/metrics, read by the AIO connector Test (extras/crossplane)
+
+resourcesCrossplane:
+  requests: { cpu: 50m, memory: 192Mi }
+  limits: { memory: 1Gi }        # memory grows with the number of provider CRDs it watches
+
+rbacManager:
+  deploy: true                   # grants each provider's service account access to its own CRDs: required
+  replicas: 1
+
+resourcesRBACManager:
+  requests: { cpu: 20m, memory: 64Mi }
+  limits: { memory: 256Mi }

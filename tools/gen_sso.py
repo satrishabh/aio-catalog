@@ -15,14 +15,16 @@ OUT = os.path.join(ROOT, "sso", "keycloak", "clients")
 # Where each tool expects the OIDC callback (path on its own host)
 CALLBACK = {
     "aio-grafana": "/login/generic_oauth", "aio-argocd": "/auth/callback", "aio-harbor": "/c/oidc/callback",
-    "aio-airflow": "/oauth-authorized/keycloak", "aio-superset": "/oauth-authorized/keycloak",
-    "aio-appsmith": "/login/oauth2/code/oidc", "aio-backstage": "/api/auth/oidc/handler/frame",
-    "aio-gitea": "/user/oauth2/aio/callback", "aio-dependency-track": "/static/oidc-callback.html",
+    "aio-airflow": "/auth/oauth-authorized/keycloak", "aio-superset": "/oauth-authorized/keycloak",
+    "aio-backstage": "/api/auth/oidc/handler/frame",
+    "aio-gitea": "/user/oauth2/aio/callback", "aio-langfuse": "/api/auth/callback/keycloak", "aio-dependency-track": "/static/oidc-callback.html",
 }
 HOST = {"aio-grafana": "grafana", "aio-argocd": "argocd"}
 # Tools that read roles from a flat "groups" claim (Harbor: oidc_groups_claim / oidc_admin_group) get a mapper
 # that puts this client's roles (aio-admin, aio-business) into "groups".
-GROUPS_CLAIM = {"aio-harbor"}
+GROUPS_CLAIM = {"aio-harbor", "aio-dependency-track", "aio-airflow", "aio-superset"}
+# Tools whose login runs in the browser (authorization code + PKCE, no client secret): public Keycloak clients.
+PUBLIC = {"aio-dependency-track"}
 
 
 def groups_mapper(client_id):
@@ -71,6 +73,8 @@ def main():
             continue
         cid = sso["clientId"]
         c = client(cid, HOST.get(cid, e["id"]), CALLBACK.get(cid, "/oauth2/callback"), f"{e['name']} (AIO managed)")
+        if cid in PUBLIC:
+            c["publicClient"] = True
         if cid in GROUPS_CLAIM:
             c["protocolMappers"] = [groups_mapper(cid)]
         json.dump(c, open(os.path.join(OUT, cid + ".json"), "w", encoding="utf-8", newline="\n"), indent=2)

@@ -1,0 +1,25 @@
+# Dependency-Track's PostgreSQL, run by the CloudNativePG operator (connector "cloudnative-pg").
+# The operator creates Secret dependency-track-db-app (username dtrack, key "password") that the API server reads,
+# and the Service dependency-track-db-rw. DT creates the extensions it needs (pg_trgm, trusted) during its schema
+# migration. The mirrored vulnerability data (NVD and friends) is most of the size. Nightly Velero backups (phase 3)
+# copy its volume.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: dependency-track-db
+  namespace: dependency-track
+spec:
+  instances: 1
+  storage:
+    size: 10Gi
+  resources:
+    requests: { cpu: 50m, memory: 256Mi }
+    limits: { memory: 1Gi }
+  postgresql:
+    parameters:
+      shared_buffers: 128MB
+      max_connections: "100"
+  bootstrap:
+    initdb:
+      database: dtrack
+      owner: dtrack

@@ -1,14 +1,28 @@
 id: openkruise
 name: OpenKruise
 category: Platform
-kind: planned
+kind: managed
 phase: '6'
-description: 'Advanced workloads: in-place updates, sidecar management, image pre-download.'
+description: 'Advanced workloads: CloneSet with in-place image updates and partitioned rollouts, Advanced StatefulSet
+  and DaemonSet, BroadcastJob and AdvancedCronJob. Installs kruise-manager only; no pod webhook (a stopped manager
+  never blocks pods) and no node daemon, so SidecarSet, WorkloadSpread, PodUnavailableBudget and image pre-download
+  are off. Webhook certificate from cert-manager.'
+namespace: kruise-system
+deployment: kruise-controller-manager
 chartRepo: https://openkruise.github.io/charts/
 chart: kruise
+version: 1.9.3
+previousVersion: 1.9.2
+releaseName: kruise
+valuesPath: values/openkruise/values.yaml
+extrasPath: extras/openkruise
+accessHint: 'kubectl get clonesets.apps.kruise.io,statefulsets.apps.kruise.io -A. A workload: apiVersion
+  apps.kruise.io/v1alpha1, kind CloneSet (Deployment fields plus spec.updateStrategy.type: InPlaceIfPossible).'
+probes:
+- name: Controllers running
+  url: http://kruise-manager-metrics.kruise-system.svc:8080/metrics
+  expect: 'controller_runtime_reconcile_total{controller="cloneset-controller"'
 license: Apache-2.0
 foundation: CNCF (incubating)
 origin: China (Alibaba)
 homepage: https://openkruise.io
-version: 1.9.2
-previousVersion: 1.9.1

@@ -1,0 +1,63 @@
+# Site overrides for sarvaikam.com: Airflow at https://airflow.tools.sarvaikam.com with Keycloak login (realm aio).
+# Needs Secret airflow/airflow-oidc (key client-secret), written by setup/airflow-secrets.sh with
+# OIDC_CLIENT_SECRET set (the secret of Keycloak client aio-airflow).
+#
+# Airflow 3 runs the FAB auth manager as a sub-app under /auth, so the Keycloak redirect URI is
+#   https://airflow.tools.sarvaikam.com/auth/oauth-authorized/keycloak
+# Keycloak client roles of aio-airflow (flat "groups" claim in userinfo) map to Airflow roles at every login:
+#   aio-admin -> Admin, aio-business -> Viewer; anyone else gets role Public (no access).
+# The local "admin" user from setup/airflow-secrets.sh stays for break-glass use: /auth/login/ shows only Keycloak,
+# so use "airflow users reset-password" in the api-server pod if Keycloak is down.
+config:
+  api:
+    base_url: https://airflow.tools.sarvaikam.com/
+
+apiServer:
+  args: ["bash", "-c", "exec airflow api-server --proxy-headers"]
+  env:
+    - name: FORWARDED_ALLOW_IPS
+      value: "*"                       # only Traefik reaches the pod (ClusterIP service)
+    - name: AIRFLOW_OIDC_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef: { name: airflow-oidc, key: client-secret }
+  apiServerConfig: |
+    import os
+
+    from flask_appbuilder.security.manager import AUTH_OAUTH
+
+    AUTH_TYPE = AUTH_OAUTH
+    AUTH_USER_REGISTRATION = True
+    AUTH_USER_REGISTRATION_ROLE = "Public"
+    AUTH_ROLES_SYNC_AT_LOGIN = True
+    AUTH_ROLES_MAPPING = {"aio-admin": ["Admin"], "aio-business": ["Viewer"]}
+    PERMANENT_SESSION_LIFETIME = 43200
+
+    _ISSUER = "https://profile.sarvaikam.com/realms/aio"
+    OAUTH_PROVIDERS = [
+        {
+            "name": "keycloak",
+            "icon": "fa-key",
+            "token_key": "access_token",
+            "remote_app": {
+                "client_id": "aio-airflow",
+                "client_secret": os.environ.get("AIRFLOW_OIDC_CLIENT_SECRET", ""),
+                "server_metadata_url": _ISSUER + "/.well-known/openid-configuration",
+                "api_base_url": _ISSUER + "/protocol/",
+                "client_kwargs": {"scope": "openid email profile", "code_challenge_method": "S256"},
+            },
+        }
+    ]
+
+ingress:
+  apiServer:
+    enabled: true
+    ingressClassName: aio-azure
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-azure
+    path: /
+    pathType: Prefix
+    hosts:
+      - name: airflow.tools.sarvaikam.com
+        tls:
+          enabled: true
+          secretName: airflow-tools-tls

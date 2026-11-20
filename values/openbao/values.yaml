@@ -1,0 +1,69 @@
+# OpenBao values for the "openbao" connector (chart 0.30.6 / OpenBao 2.7.2; rollback target 0.30.5, same OpenBao).
+# Installed by the AIO portal through Argo CD (app connector-openbao, namespace openbao).
+#
+# A secrets manager (the open-source fork of HashiCorp Vault): one standalone server (StatefulSet openbao, pod
+# openbao-0) with integrated Raft storage on a 2 Gi disk from the default StorageClass, and the web UI. Any cloud,
+# no cloud credentials. Image quay.io/openbao/openbao (official). The agent injector webhook and the CSI provider
+# are off: apps read secrets through the External Secrets connector (ClusterSecretStore with provider "vault"
+# pointing at http://openbao.openbao.svc:8200) or the OpenBao API, so nothing intercepts pod creation.
+#
+# Sealing: OpenBao starts SEALED after every pod start (install, node drain, spot eviction, upgrade) and serves no
+# secrets until it is unsealed. After Enable, run setup/openbao-init.sh once: it initialises OpenBao (1 key share,
+# threshold 1 by default; KEY_SHARES/KEY_THRESHOLD to change), stores the unseal key(s) and the root token in
+# Secret openbao/openbao-init and unseals. Move that Secret offline (password manager / two people) and delete it
+# from the cluster; after a restart run the script again with UNSEAL_KEY_FILE=<file with one key per line>.
+# Hands-free unsealing (a later step, not built here): an Azure Key Vault or GCP Cloud KMS key, reached with the
+# pod's workload identity (seal "azurekeyvault" / seal "gcpckms" stanza, then bao operator unseal -migrate).
+#
+# Upgrades: updateStrategy OnDelete (chart default). A new chart version changes the StatefulSet but the pod keeps
+# running the old version until an admin deletes it at a convenient time (kubectl -n openbao delete pod openbao-0)
+# and unseals again. Readiness: the pod is Ready only when unsealed (bao status).
+#
+# Traffic inside the cluster is plain HTTP on 8200 (listener tls_disable), like the other in-cluster tool APIs;
+# no ingress, so the UI is reached with kubectl port-forward (accessHint). Login with the root token only for the
+# first configuration (auth methods, policies), then revoke it (bao token revoke) and use those auth methods.
+global:
+  tlsDisable: true
+
+injector:
+  enabled: false                       # mutating webhook on every pod; also uses the hashicorp/vault-k8s image
+
+csi:
+  enabled: false
+
+server:
+  enabled: true
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
+  dataStorage:
+    enabled: true
+    size: 2Gi
+    mountPath: /openbao/data
+  auditStorage:
+    enabled: false                     # enable a file audit device on dataStorage or stdout instead when needed
+  readinessProbe:
+    enabled: true                      # no path: exec "bao status", Ready only when unsealed
+  livenessProbe:
+    enabled: true                      # alive while sealed or uninitialised too, so a sealed pod is not restarted
+    path: "/v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204"
+    initialDelaySeconds: 30
+  affinity: ""                         # one replica: no anti-affinity needed
+  standalone:
+    enabled: true
+    config: |
+      ui = true
+      listener "tcp" {
+        tls_disable = 1
+        address = "[::]:8200"
+        cluster_address = "[::]:8201"
+      }
+      storage "raft" {
+        path = "/openbao/data"
+        node_id = "openbao-0"
+      }
+  ha:
+    enabled: false
+
+ui:
+  enabled: true                        # Service openbao-ui (8200, ClusterIP); the UI is also served on openbao:8200/ui

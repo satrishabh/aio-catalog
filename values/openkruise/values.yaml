@@ -1,0 +1,48 @@
+# OpenKruise values for the "openkruise" connector (chart 1.9.3 / Kruise 1.9.3; rollback target 1.9.2).
+# Installed by the AIO portal through Argo CD (app connector-openkruise, namespace kruise-system).
+#
+# Installs kruise-manager only (one replica): the controllers and admission webhooks for the advanced workloads
+# CloneSet (in-place image updates, partitioned rollouts), Advanced StatefulSet, Advanced DaemonSet, BroadcastJob,
+# AdvancedCronJob, UnitedDeployment, ResourceDistribution and PersistentPodState. Apps use them by switching
+# apiVersion/kind, e.g. apps.kruise.io/v1alpha1 CloneSet with spec.updateStrategy.type: InPlaceIfPossible.
+#
+# Two features are switched off on purpose (feature gates below):
+#   PodWebhook=false    no webhook on Pods (create/update/delete/eviction). The chart hard-codes failurePolicy: Fail
+#                       for them, so with the webhook on, a stopped kruise-manager would block pod creation, pod
+#                       deletion and node drains in every namespace except kube-system. Lost with it: SidecarSet
+#                       injection, WorkloadSpread, PodUnavailableBudget and the KruisePodReadinessGate.
+#   KruiseDaemon=false  no kruise-daemon DaemonSet (a privileged pod on every node talking to the container
+#                       runtime). Lost with it: ImagePullJob / NodeImage (image pre-download), ContainerRecreateRequest,
+#                       PodProbeMarker and in-place updates of env-from-metadata. CloneSet / Advanced StatefulSet
+#                       in-place image updates do not need it (the kubelet restarts the container).
+# The remaining webhooks only see Kruise's own resources (failurePolicy Fail; a stopped manager blocks changes to
+# CloneSets etc., never to plain pods) plus delete-protection checks on objects labelled
+# policy.kruise.io/delete-protection (failurePolicy Ignore).
+#
+# Argo CD: kruise-manager normally generates its own webhook CA and rewrites its webhook configurations and CRDs,
+# which Argo CD would revert on every sync. Instead (EnableExternalCerts=true) cert-manager issues the webhook
+# certificate and injects the CA (extras/openkruise/webhook-cert.yaml), and the CRDs come from
+# extras/openkruise/crds.yaml with the conversion webhook already pointing at kruise-webhook-service
+# (crds.managed=false). Regenerate crds.yaml when the chart version changes (see its header).
+# No secrets or setup script. Requires cert-manager (core).
+
+crds:
+  managed: false                 # extras/openkruise/crds.yaml
+
+installation:
+  namespace: kruise-system       # must equal the connector namespace
+  createNamespace: true
+
+featureGates: "PodWebhook=false,KruiseDaemon=false,EnableExternalCerts=true"
+
+externalCerts:
+  annotations:
+    cert-manager.io/inject-ca-from: kruise-system/kruise-webhook-cert
+
+manager:
+  replicas: 1
+  log:
+    level: "2"
+  resources:
+    requests: { cpu: 50m, memory: 192Mi }
+    limits: { cpu: 500m, memory: 512Mi }

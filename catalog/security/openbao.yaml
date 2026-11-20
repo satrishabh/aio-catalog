@@ -1,13 +1,26 @@
 id: openbao
 name: OpenBao
 category: Security
-kind: planned
+kind: managed
 phase: '6'
-description: Secrets manager (open-source fork of Vault, which is no longer OSI-licensed).
+description: Secrets manager (open-source fork of Vault, which is no longer OSI-licensed) with the web UI. One
+  server with integrated Raft storage on a 2 Gi disk, any cloud. Starts sealed after every restart; setup/openbao-init.sh
+  initialises and unseals it. Apps read secrets through External Secrets (provider vault) or the API.
+namespace: openbao
 chartRepo: https://openbao.github.io/openbao-helm
 chart: openbao
+version: 0.30.6
+previousVersion: 0.30.5
+releaseName: openbao
+valuesPath: values/openbao/values.yaml
+accessHint: 'After Enable run setup/openbao-init.sh (aio-catalog): it initialises, stores the unseal key and root token
+  in Secret openbao/openbao-init (move it offline, then delete it) and unseals. After every restart of openbao-0 run
+  it again (UNSEAL_KEY_FILE=<keys file> once the Secret is gone). UI: kubectl -n openbao port-forward svc/openbao-ui
+  8200:8200, then http://localhost:8200/ui. API in-cluster: http://openbao.openbao.svc:8200'
+probes:
+- name: OpenBao initialised and unsealed
+  url: http://openbao.openbao.svc:8200/v1/sys/health?standbyok=true&sealedcode=503&uninitcode=501
+  expect: '"sealed":false'
 license: MPL-2.0
 foundation: Linux Foundation (OpenSSF)
 homepage: https://openbao.org
-version: 0.30.6
-previousVersion: 0.30.5

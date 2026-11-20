@@ -1,0 +1,67 @@
+# Webhook TLS for kruise-manager from cert-manager (core), so kruise-manager never rewrites its webhook
+# configurations or CRDs (feature gate EnableExternalCerts=true in values/openkruise/values.yaml).
+# Chain: self-signed issuer -> CA kruise-webhook-ca (10 years) -> serving certificate in Secret kruise-webhook-certs
+# (keys tls.crt, tls.key, ca.crt: the names kruise-manager reads). cainjector copies ca.crt into the webhook
+# configurations and the three CRDs with a conversion webhook (annotation cert-manager.io/inject-ca-from).
+# Sync wave -1: the certificate exists before kruise-manager starts (it exits and retries until it does).
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: kruise-selfsigned
+  namespace: kruise-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kruise-webhook-ca
+  namespace: kruise-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  isCA: true
+  commonName: kruise-webhook-ca
+  secretName: kruise-webhook-ca
+  duration: 87600h
+  renewBefore: 720h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: kruise-selfsigned
+    kind: Issuer
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: kruise-webhook-ca
+  namespace: kruise-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  ca:
+    secretName: kruise-webhook-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kruise-webhook-cert
+  namespace: kruise-system
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  secretName: kruise-webhook-certs
+  dnsNames:
+    - kruise-webhook-service.kruise-system.svc
+    - kruise-webhook-service.kruise-system.svc.cluster.local
+  duration: 8760h
+  renewBefore: 720h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: kruise-webhook-ca
+    kind: Issuer

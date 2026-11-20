@@ -1,0 +1,164 @@
+# Langfuse values for the "langfuse" connector (chart 2.2.3 / Langfuse 4.75.0; rollback target 2.2.1 / 4.70.1).
+# Installed by the AIO portal through Argo CD (app connector-langfuse, namespace langfuse).
+#
+# LLM observability: traces, cost, latency and scores of the AIO assistant and of app AI features, plus prompt
+# management and evaluations. Langfuse web (UI + API) and worker, with its four stores kept small and in-namespace:
+#   PostgreSQL  CloudNativePG cluster langfuse-db (extras/langfuse, so "cloudnative-pg" is required)
+#   ClickHouse  one plain StatefulSet langfuse-clickhouse, official image, low-memory settings (extras/langfuse).
+#               The chart's own ClickHouse needs the ClickHouse operator (alpha) plus a Keeper; neither is used.
+#   Valkey      the chart's Valkey (official valkey/valkey image), password on, reachable from this namespace only
+#   S3          one SeaweedFS pod (official chrislusf/seaweedfs image, Apache-2.0) from extras/langfuse, in-namespace
+#               only. Media upload and batch export are off: both hand out pre-signed URLs to that in-cluster store,
+#               which browsers and SDKs outside the namespace cannot reach.
+# No Bitnami images.
+#
+# Before Enable, run setup/langfuse-secrets.sh once (Argo CD cannot keep secrets the chart would generate; they
+# would change on every render). It creates:
+#   Secret langfuse-secrets    salt, encryption-key, nextauth-secret, admin-email, admin-password,
+#                              project-public-key, project-secret-key
+#   Secret langfuse-clickhouse password
+#   Secret langfuse-redis-auth default            (Valkey password of user "default")
+#   Secret langfuse-s3-auth    accessKey, secretKey, seaweedfs_s3_config
+# On first start Langfuse creates organisation "AIO", project "AIO" (id aio), the admin user and the project's API
+# key pair from those Secrets.
+#
+# Apps send traces with the Langfuse SDKs or OpenTelemetry to http://langfuse-web.langfuse.svc:3000 with the
+# project keys (LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / LANGFUSE_HOST); copy them from Secret
+# langfuse/langfuse-secrets into the app's namespace (or sync them with External Secrets).
+#
+# Without a site overlay the UI is in-cluster only (port-forward); a site overlay adds HTTPS and Keycloak login.
+langfuse:
+  nextauth:
+    url: http://localhost:3000                 # port-forward; the site overlay sets the public URL
+    secret:
+      secretKeyRef: { name: langfuse-secrets, key: nextauth-secret }
+  salt:
+    secretKeyRef: { name: langfuse-secrets, key: salt }
+  encryptionKey:
+    secretKeyRef: { name: langfuse-secrets, key: encryption-key }
+
+  features:
+    telemetryEnabled: false
+    signUpDisabled: true                       # only the admin from the setup script (site overlay: Keycloak users)
+    experimentalFeaturesEnabled: false
+
+  image:
+    pullPolicy: IfNotPresent
+
+  # Headless initialisation (first start only): organisation, project, admin user and the project's API keys.
+  additionalEnv:
+    - { name: LANGFUSE_INIT_ORG_ID, value: aio }
+    - { name: LANGFUSE_INIT_ORG_NAME, value: AIO }
+    - { name: LANGFUSE_INIT_PROJECT_ID, value: aio }
+    - { name: LANGFUSE_INIT_PROJECT_NAME, value: AIO }
+    - name: LANGFUSE_INIT_PROJECT_PUBLIC_KEY
+      valueFrom: { secretKeyRef: { name: langfuse-secrets, key: project-public-key } }
+    - name: LANGFUSE_INIT_PROJECT_SECRET_KEY
+      valueFrom: { secretKeyRef: { name: langfuse-secrets, key: project-secret-key } }
+    - { name: LANGFUSE_INIT_USER_NAME, value: admin }
+    - name: LANGFUSE_INIT_USER_EMAIL
+      valueFrom: { secretKeyRef: { name: langfuse-secrets, key: admin-email } }
+    - name: LANGFUSE_INIT_USER_PASSWORD
+      valueFrom: { secretKeyRef: { name: langfuse-secrets, key: admin-password } }
+    # Only the admin may create further organisations.
+    - name: LANGFUSE_ALLOWED_ORGANIZATION_CREATORS
+      valueFrom: { secretKeyRef: { name: langfuse-secrets, key: admin-email } }
+
+  web:
+    resources:
+      requests: { cpu: 100m, memory: 512Mi }
+      limits: { memory: 1536Mi }
+    # First start runs the PostgreSQL and ClickHouse migrations before the server listens.
+    livenessProbe:
+      initialDelaySeconds: 90
+      failureThreshold: 6
+    readinessProbe:
+      initialDelaySeconds: 30
+    pdb:
+      create: false                            # one replica: a PDB would only block node drains
+  worker:
+    resources:
+      requests: { cpu: 100m, memory: 384Mi }
+      limits: { memory: 1Gi }
+    livenessProbe:
+      initialDelaySeconds: 60
+      failureThreshold: 6
+    pdb:
+      create: false
+
+postgresql:
+  deploy: false
+  host: langfuse-db-rw.langfuse.svc           # CloudNativePG cluster from extras/langfuse
+  port: 5432
+  auth:
+    username: langfuse
+    database: langfuse
+    existingSecret: langfuse-db-app            # created by CloudNativePG
+    secretKeys:
+      userPasswordKey: password
+
+redis:
+  deploy: true
+  image:
+    tag: "8.0.12"
+  auth:
+    enabled: true
+    username: default
+    existingSecret: langfuse-redis-auth        # Langfuse reads the password from here ...
+    existingSecretPasswordKey: default
+    usersExistingSecret: langfuse-redis-auth   # ... and Valkey from here (key = user name)
+  dataStorage:
+    enabled: true
+    requestedSize: 1Gi
+  deploymentStrategy: Recreate
+  valkeyConfig: |
+    maxmemory 128mb
+    maxmemory-policy noeviction
+  resources:
+    requests: { cpu: 20m, memory: 48Mi }
+    limits: { memory: 192Mi }
+  initResources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits: { memory: 64Mi }
+  networkPolicy:                               # Langfuse pods (and nothing outside this namespace) may connect
+    ingress:
+      - from:
+          - podSelector: {}
+        ports:
+          - { port: 6379, protocol: TCP }
+
+clickhouse:
+  deploy: false
+  host: langfuse-clickhouse.langfuse.svc      # StatefulSet from extras/langfuse
+  httpPort: 8123
+  nativePort: 9000
+  database: default
+  auth:
+    username: langfuse
+    existingSecret: langfuse-clickhouse
+    existingSecretKey: password
+  migration:
+    url: clickhouse://langfuse-clickhouse.langfuse.svc:9000
+    ssl: false
+    autoMigrate: true
+  cluster:
+    enabled: false                             # single node: no ON CLUSTER DDL, no Keeper
+
+# Blob storage: SeaweedFS from extras/langfuse (Service langfuse-s3). The chart's bundled SeaweedFS is not used: its
+# sub-chart renders a Secret with new random SFTP passwords (and a fixed, published SSH key) on every render.
+s3:
+  deploy: false
+  bucket: langfuse                             # created by the SeaweedFS pod at start
+  region: auto
+  endpoint: http://langfuse-s3.langfuse.svc:8333
+  forcePathStyle: true
+  accessKeyId:
+    secretKeyRef: { name: langfuse-s3-auth, key: accessKey }
+  secretAccessKey:
+    secretKeyRef: { name: langfuse-s3-auth, key: secretKey }
+  # Batch export and media upload hand out pre-signed URLs to this in-cluster store, which browsers and SDKs
+  # outside the namespace cannot reach: export is off; media attachments in traces are not stored.
+  batchExport:
+    enabled: false
+  mediaUpload:
+    enabled: false

@@ -1,0 +1,87 @@
+# Apache APISIX values for the "apisix" connector (chart 2.18.2 / APISIX 3.19.0; rollback target 2.18.1).
+# Installed by the AIO portal through Argo CD (app connector-apisix, namespace apisix).
+#
+# An API gateway (rate limits, auth plugins, canary routing) in declarative standalone mode: one APISIX pod reads its
+# routes from the ConfigMap "apisix.yaml", rendered from apisix.deployment.standalone.config below. There is no etcd
+# (the chart's default is a 3-node Bitnami etcd), no Admin API and no dashboard, so there is no admin key to protect
+# and nothing to change outside Git. APISIX re-reads the file when the ConfigMap changes (no restart).
+#
+# APISIX does not take over ingress: Service apisix-gateway is ClusterIP (the chart default is NodePort), no
+# LoadBalancer, no ingress controller and no IngressClass. The cluster's ingress (Traefik / ingress-nginx) stays in
+# front; traffic reaches APISIX at http://apisix-gateway.apisix.svc (port 80), either from apps in the cluster or
+# from an Ingress that points at that Service.
+#
+# Routes: add them to standalone.config (APISIX standalone format: routes, upstreams, services, consumers,
+# plugin_configs, global_rules; https://apisix.apache.org/docs/apisix/deployment-modes/#standalone). Upstreams are
+# Kubernetes Services, e.g. nodes: { "orders.orders-dev.svc.cluster.local:80": 1 }. Keep the aio-health route: the
+# AIO Test calls it. Secrets for plugins (consumer keys, JWT secrets) must not be written here: use
+# $ENV://NAME references and extraEnvVars from a Secret.
+# Prerequisites: none (no secrets, no setup script).
+image:
+  repository: apache/apisix
+  tag: 3.19.0-ubuntu
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+useDaemonSet: false
+autoscaling:
+  enabled: false
+podDisruptionBudget:
+  enabled: false
+
+resources:
+  requests: { cpu: 50m, memory: 128Mi }
+  limits: { memory: 512Mi }
+
+service:
+  type: ClusterIP                      # never NodePort/LoadBalancer: the cluster's ingress stays the edge
+  http:
+    enabled: true
+    servicePort: 80
+    containerPort: 9080
+  stream:
+    enabled: false
+
+ingress:
+  enabled: false
+control:
+  enabled: false                       # control API listens on 127.0.0.1 only; its Service would be useless
+metrics:
+  serviceMonitor:
+    enabled: false
+
+apisix:
+  enableIPv6: false                    # not every node has IPv6
+  enableServerTokens: false            # no version in the Server header
+  ssl:
+    enabled: false                     # TLS ends at the cluster's ingress
+  admin:
+    enabled: false                     # no Admin API in standalone mode
+    enable_admin_ui: false
+  nginx:
+    workerProcesses: "1"               # one worker is plenty for a dev/staging gateway; raise with replicas
+    enableCPUAffinity: false
+  prometheus:
+    enabled: false
+  deployment:
+    mode: standalone
+    role: data_plane                   # explicit, so chart 2.18.1 (rollback) renders the same role as 2.18.2
+    standalone:
+      config: |
+        routes:
+          - id: aio-health
+            uri: /aio-health
+            methods: [GET]
+            plugins:
+              mocking:
+                content_type: application/json
+                response_status: 200
+                response_example: '{"gateway":"apisix","status":"ok"}'
+
+etcd:
+  enabled: false                       # Bitnami etcd; standalone mode needs no etcd
+externalEtcd:
+  user: ""                             # else the chart renders an empty etcd password Secret and env var
+
+ingress-controller:
+  enabled: false                       # would install cluster-wide CRDs (incl. Gateway API) and an IngressClass
