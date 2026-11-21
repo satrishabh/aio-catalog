@@ -1275,8 +1275,9 @@ connectors:
   valuesPath: values/kube-prometheus-stack/values.yaml
   cloudValues:
     aks: values/kube-prometheus-stack/values-aks.yaml
-  accessHint: 'kubectl -n monitoring port-forward svc/kps-grafana 3000:80 (user admin; password: kubectl -n monitoring
-    get secret kps-grafana -o jsonpath=''{.data.admin-password}'' | base64 -d)'
+  accessHint: 'Run setup/prometheus-secrets.sh (aio-catalog) before Enable. kubectl -n monitoring port-forward svc/kps-grafana
+    3000:80 (user admin; password: kubectl -n monitoring get secret grafana-admin -o jsonpath=''{.data.admin-password}''
+    | base64 -d)'
   probes:
   - name: Prometheus query
     url: http://kps-prometheus.monitoring.svc:9090/api/v1/query?query=up
