@@ -28,6 +28,9 @@ Every tool in this catalog, whatever its origin, passes the same rules before it
 3. Probes that prove the tool works, not only that a pod runs.
 4. An SSO mode: `oidc` (own Keycloak client), `proxy` (oauth2-proxy gate) or none.
 5. A dry run on a real cluster, at both versions, before the first Enable.
+6. Optional: a `binding` (README → Bindings) when projects should attach it from Project → Services. Shared
+   bindings copy credentials from a Secret the setup script creates, never a value from Git; instance templates are
+   sized for the smallest cluster and name every object after `${name}` or `${app}`.
 
 ## Considered, not added
 

@@ -1,0 +1,62 @@
+# Binding template for the "opensearch" connector (OpenSearch operator): one app's own 1-node OpenSearch cluster,
+# security plugin on, TLS from a per-cluster cert-manager CA. Placeholders are replaced by the AIO platform (plain
+# string substitution) before the text goes into the app's values.
+# No admin Secret is needed up front: without spec.security.config.adminCredentialsSecret the operator generates
+# Secret ${name}-admin-password (keys username = admin, password = random) at first reconcile and uses it.
+# Apps trust ca.crt from Secret ${name}-ca for https://${name}.${namespace}.svc:9200.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: ${name}-selfsigned
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ${name}-ca
+spec:
+  isCA: true
+  commonName: ${name}-ca
+  secretName: ${name}-ca
+  duration: 87600h
+  privateKey: { algorithm: RSA, size: 2048 }
+  issuerRef: { name: ${name}-selfsigned, kind: Issuer }
+---
+apiVersion: opensearch.org/v1
+kind: OpenSearchCluster
+metadata:
+  name: ${name}
+spec:
+  general:
+    serviceName: ${name}
+    version: "3.9.0"
+    httpPort: 9200
+    setVMMaxMapCount: false
+    additionalConfig:
+      node.store.allow_mmap: "false"
+    podSecurityContext: { runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000, runAsNonRoot: true }
+    securityContext: { allowPrivilegeEscalation: false }
+  bootstrap:
+    resources:
+      requests: { cpu: 100m, memory: 768Mi }
+      limits: { memory: 768Mi }
+  nodePools:
+    - component: nodes
+      replicas: 1
+      diskSize: ${opt.disk}
+      roles: [cluster_manager, data]
+      resources:
+        requests: { cpu: 250m, memory: 1Gi }
+        limits: { memory: 1Gi }
+  security:
+    tls:
+      transport:
+        generate: true
+        perNode: true
+        caSecret: { name: ${name}-ca }
+      http:
+        generate: true
+        caSecret: { name: ${name}-ca }
+  dashboards:
+    enable: false

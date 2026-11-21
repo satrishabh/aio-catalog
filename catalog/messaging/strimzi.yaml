@@ -25,3 +25,15 @@ probes:
 license: Apache-2.0
 foundation: CNCF (incubating) / Apache Kafka
 homepage: https://strimzi.io
+binding:
+  label: Kafka cluster
+  summary: Your own single-node Kafka (KRaft) in this environment, plain listener inside the cluster.
+  scope: instance
+  envs: [dev, staging, prod]
+  options:
+  - { id: storage, label: Disk size, default: 5Gi, choices: [5Gi, 10Gi, 20Gi] }
+  manifests: bindings/strimzi.yaml
+  env:
+  - { name: KAFKA_BOOTSTRAP_SERVERS, value: '${name}-kafka-bootstrap:9092' }
+  exportNote: Needs the Strimzi operator (connectors/strimzi). Single broker and replication factor 1; detaching deletes
+    the cluster and its data.

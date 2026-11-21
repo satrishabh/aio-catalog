@@ -23,3 +23,14 @@ probes:
 license: Apache-2.0
 foundation: CNCF (incubating)
 homepage: https://opentelemetry.io
+binding:
+  label: OpenTelemetry traces
+  summary: Sends your app's OpenTelemetry traces to the node's collector (on to Tempo), tagged with app and environment.
+  scope: config
+  env:
+  - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: 'http://otel-collector.opentelemetry.svc:4318' }
+  - { name: OTEL_EXPORTER_OTLP_PROTOCOL, value: http/protobuf }
+  - { name: OTEL_SERVICE_NAME, value: '${app}' }
+  - { name: OTEL_RESOURCE_ATTRIBUTES, value: 'deployment.environment=${env}' }
+  exportNote: Needs an OpenTelemetry Collector at otel-collector.opentelemetry.svc:4318 (connectors/opentelemetry-collector,
+    with loki and tempo); change OTEL_EXPORTER_OTLP_ENDPOINT to use another one.

@@ -1,0 +1,17 @@
+# Binding template for the "cloudnative-pg" connector: one app's own PostgreSQL cluster in its environment namespace.
+# Placeholders are replaced by the AIO platform (plain string substitution) before the text goes into the app's values.
+# The operator creates Secret ${name}-app (keys uri, jdbc-uri, host, port, dbname, username, password) and the
+# Services ${name}-rw (read-write) and ${name}-r (read).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: ${name}
+spec:
+  instances: ${opt.instances}
+  storage:
+    size: ${opt.storage}
+  resources:
+    requests: { cpu: 50m, memory: 192Mi }
+    limits: { memory: 384Mi }
+  bootstrap:
+    initdb: { database: app, owner: app }

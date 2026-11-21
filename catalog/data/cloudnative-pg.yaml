@@ -24,3 +24,20 @@ probes:
 license: Apache-2.0
 foundation: CNCF (sandbox)
 homepage: https://cloudnative-pg.io
+binding:
+  label: PostgreSQL database
+  summary: Your own PostgreSQL cluster in this environment, with a generated user and password.
+  scope: instance
+  envs: [dev, staging, prod]
+  options:
+  - { id: storage, label: Disk size, default: 1Gi, choices: [1Gi, 5Gi, 10Gi] }
+  - { id: instances, label: Instances, default: '1', choices: ['1', '2', '3'] }
+  manifests: bindings/cloudnative-pg.yaml
+  env:
+  - { name: DATABASE_URL, secret: '${name}-app', key: uri }
+  - { name: PGHOST, value: '${name}-rw' }
+  - { name: PGUSER, secret: '${name}-app', key: username }
+  - { name: PGPASSWORD, secret: '${name}-app', key: password }
+  - { name: PGDATABASE, secret: '${name}-app', key: dbname }
+  exportNote: Needs the CloudNativePG operator (connectors/cloudnative-pg). The operator creates Secret <app>-cloudnative-pg-app
+    (uri, host, username, password, dbname); detaching deletes the cluster and its data.

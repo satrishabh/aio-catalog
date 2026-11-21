@@ -41,3 +41,11 @@ homepage: https://temporal.io
 pinNote: Chart 1.8.0 ships server 1.32.2 and UI 2.56.1 (1.7.0 ships 1.32.0 / 2.54.1); official temporalio/* images
   from Docker Hub. numHistoryShards is 16 and can never change after the first start. Schema and namespace jobs are
   Argo CD Sync hooks and idempotent; on a chart upgrade the schema job updates the schema while the servers roll.
+binding:
+  label: Temporal workflows
+  summary: Connects your Temporal workers and clients to the shared Temporal, namespace default.
+  scope: config
+  env:
+  - { name: TEMPORAL_ADDRESS, value: 'temporal-frontend.temporal.svc:7233' }
+  - { name: TEMPORAL_NAMESPACE, value: default }
+  exportNote: Needs Temporal at temporal-frontend.temporal.svc:7233 (connectors/temporal); no TLS or auth in-cluster.
