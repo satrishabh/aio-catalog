@@ -1,0 +1,36 @@
+# Binding template for the "strimzi" connector: one app's own single-node KRaft Kafka cluster.
+# Placeholders are replaced by the AIO platform (plain string substitution) before the text goes into the app's values.
+# The app connects to ${name}-kafka-bootstrap:9092 (plain listener, in-cluster only). Topics: KafkaTopic resources
+# labelled strimzi.io/cluster: ${name}, or auto-creation by the client.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaNodePool
+metadata:
+  name: ${app}-kafka                 # pods are <cluster>-<pool>-<n>: keep the pool name short
+  labels: { strimzi.io/cluster: ${name} }
+spec:
+  replicas: 1
+  roles: [controller, broker]
+  storage: { type: persistent-claim, size: ${opt.storage}, deleteClaim: true }
+  resources:
+    requests: { cpu: 100m, memory: 768Mi }
+    limits: { memory: 1Gi }
+---
+apiVersion: kafka.strimzi.io/v1
+kind: Kafka
+metadata:
+  name: ${name}
+spec:
+  kafka:
+    listeners:
+      - { name: plain, port: 9092, type: internal, tls: false }
+    config:
+      offsets.topic.replication.factor: 1
+      transaction.state.log.replication.factor: 1
+      transaction.state.log.min.isr: 1
+      default.replication.factor: 1
+      min.insync.replicas: 1
+  entityOperator:
+    topicOperator:
+      resources:
+        requests: { cpu: 20m, memory: 128Mi }
+        limits: { memory: 256Mi }

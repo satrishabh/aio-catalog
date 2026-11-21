@@ -28,3 +28,18 @@ homepage: https://milvus.io
 pinNote: Image milvusdb/milvus (Docker Hub, the project's registry). The chart's etcd, MinIO, Pulsar, Kafka and
   Woodpecker sub-charts are disabled (standalone with embedded etcd and local storage), so the Bitnami-based
   sub-chart images are never pulled.
+binding:
+  label: Milvus vector database
+  summary: Connects to the shared Milvus as root (shared admin access to every collection); root password copied into
+    your namespace.
+  scope: shared
+  env:
+  - { name: MILVUS_URI, value: 'http://milvus.milvus.svc:19530' }
+  - { name: MILVUS_PASSWORD, secret: '${app}-milvus', key: password }
+  - { name: MILVUS_TOKEN, value: 'root:$(MILVUS_PASSWORD)' }
+  copySecret:
+    from: milvus-root
+    keys: { password: password }
+    name: '${app}-milvus'
+  exportNote: Uses the shared Milvus (connectors/milvus) with root credentials, i.e. shared admin access. Create Secret
+    <app>-milvus (key password) with the password from Secret milvus/milvus-root; better, a Milvus user per app.

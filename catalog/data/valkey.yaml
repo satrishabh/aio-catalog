@@ -26,3 +26,21 @@ foundation: Linux Foundation
 homepage: https://valkey.io
 pinNote: The metrics sidecar is redis_exporter (ghcr.io/oliver006/redis_exporter, MIT), the exporter the chart ships
   with, from that project's own registry. Test uses it to prove Valkey accepts the password.
+binding:
+  label: Valkey (Redis-compatible) cache
+  summary: The shared Valkey in dev and staging, with its password copied into your namespace and a key prefix of
+    your own.
+  scope: shared
+  envs: [dev, staging]
+  env:
+  - { name: VALKEY_HOST, value: valkey.valkey.svc }
+  - { name: VALKEY_PORT, value: '6379' }
+  - { name: VALKEY_PASSWORD, secret: '${app}-valkey', key: password }
+  - { name: REDIS_URL, value: 'redis://default:$(VALKEY_PASSWORD)@valkey.valkey.svc:6379' }
+  - { name: VALKEY_KEY_PREFIX, value: '${app}:${env}:' }
+  copySecret:
+    from: valkey-users
+    keys: { default: password }
+    name: '${app}-valkey'
+  exportNote: Uses the shared Valkey (connectors/valkey, dev and staging only). Create Secret <app>-valkey (key password)
+    in the app namespace with the password of user default from Secret valkey/valkey-users.

@@ -164,6 +164,27 @@ connectors:
     keep both aligned with the tags the pinned chart uses). The chart's ClickHouse (needs the alpha ClickHouse operator
     and a Keeper), PostgreSQL and SeaweedFS (renders new random SFTP passwords on every render) are not used. Rendering
     needs a Helm newer than 3.16 (the bundled SeaweedFS sub-chart uses fromToml even when unused; 3.19 verified).
+  binding:
+    label: Langfuse tracing
+    summary: Sends LLM traces to the shared Langfuse (project AIO); its API keys are copied into your namespace.
+    scope: shared
+    env:
+    - name: LANGFUSE_HOST
+      value: http://langfuse-web.langfuse.svc:3000
+    - name: LANGFUSE_PUBLIC_KEY
+      secret: ${app}-langfuse
+      key: public-key
+    - name: LANGFUSE_SECRET_KEY
+      secret: ${app}-langfuse
+      key: secret-key
+    copySecret:
+      from: langfuse-secrets
+      keys:
+        project-public-key: public-key
+        project-secret-key: secret-key
+      name: ${app}-langfuse
+    exportNote: Uses the shared Langfuse (connectors/langfuse). Create Secret <app>-langfuse (keys public-key, secret-key)
+      with project-public-key / project-secret-key from Secret langfuse/langfuse-secrets.
 - id: milvus
   name: Milvus
   category: AI
@@ -195,6 +216,27 @@ connectors:
   pinNote: Image milvusdb/milvus (Docker Hub, the project's registry). The chart's etcd, MinIO, Pulsar, Kafka and
     Woodpecker sub-charts are disabled (standalone with embedded etcd and local storage), so the Bitnami-based sub-chart
     images are never pulled.
+  binding:
+    label: Milvus vector database
+    summary: Connects to the shared Milvus as root (shared admin access to every collection); root password copied
+      into your namespace.
+    scope: shared
+    env:
+    - name: MILVUS_URI
+      value: http://milvus.milvus.svc:19530
+    - name: MILVUS_PASSWORD
+      secret: ${app}-milvus
+      key: password
+    - name: MILVUS_TOKEN
+      value: root:$(MILVUS_PASSWORD)
+    copySecret:
+      from: milvus-root
+      keys:
+        password: password
+      name: ${app}-milvus
+    exportNote: Uses the shared Milvus (connectors/milvus) with root credentials, i.e. shared admin access. Create
+      Secret <app>-milvus (key password) with the password from Secret milvus/milvus-root; better, a Milvus user
+      per app.
 - id: apisix
   name: Apache APISIX
   category: API gateway
@@ -439,6 +481,65 @@ connectors:
   license: Apache-2.0
   foundation: CNCF (sandbox)
   homepage: https://cloudnative-pg.io
+  binding:
+    label: PostgreSQL database
+    summary: Your own PostgreSQL cluster in this environment, with a generated user and password.
+    scope: instance
+    envs:
+    - dev
+    - staging
+    - prod
+    options:
+    - id: storage
+      label: Disk size
+      default: 1Gi
+      choices:
+      - 1Gi
+      - 5Gi
+      - 10Gi
+    - id: instances
+      label: Instances
+      default: '1'
+      choices:
+      - '1'
+      - '2'
+      - '3'
+    manifests: bindings/cloudnative-pg.yaml
+    env:
+    - name: DATABASE_URL
+      secret: ${name}-app
+      key: uri
+    - name: PGHOST
+      value: ${name}-rw
+    - name: PGUSER
+      secret: ${name}-app
+      key: username
+    - name: PGPASSWORD
+      secret: ${name}-app
+      key: password
+    - name: PGDATABASE
+      secret: ${name}-app
+      key: dbname
+    exportNote: Needs the CloudNativePG operator (connectors/cloudnative-pg). The operator creates Secret <app>-cloudnative-pg-app
+      (uri, host, username, password, dbname); detaching deletes the cluster and its data.
+    manifestsText: |
+      # Binding template for the "cloudnative-pg" connector: one app's own PostgreSQL cluster in its environment namespace.
+      # Placeholders are replaced by the AIO platform (plain string substitution) before the text goes into the app's values.
+      # The operator creates Secret ${name}-app (keys uri, jdbc-uri, host, port, dbname, username, password) and the
+      # Services ${name}-rw (read-write) and ${name}-r (read).
+      apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      metadata:
+        name: ${name}
+      spec:
+        instances: ${opt.instances}
+        storage:
+          size: ${opt.storage}
+        resources:
+          requests: { cpu: 50m, memory: 192Mi }
+          limits: { memory: 384Mi }
+        bootstrap:
+          initdb: { database: app, owner: app }
 - id: doris
   name: Apache Doris
   category: Data
@@ -637,6 +738,33 @@ connectors:
   homepage: https://valkey.io
   pinNote: The metrics sidecar is redis_exporter (ghcr.io/oliver006/redis_exporter, MIT), the exporter the chart
     ships with, from that project's own registry. Test uses it to prove Valkey accepts the password.
+  binding:
+    label: Valkey (Redis-compatible) cache
+    summary: The shared Valkey in dev and staging, with its password copied into your namespace and a key prefix
+      of your own.
+    scope: shared
+    envs:
+    - dev
+    - staging
+    env:
+    - name: VALKEY_HOST
+      value: valkey.valkey.svc
+    - name: VALKEY_PORT
+      value: '6379'
+    - name: VALKEY_PASSWORD
+      secret: ${app}-valkey
+      key: password
+    - name: REDIS_URL
+      value: redis://default:$(VALKEY_PASSWORD)@valkey.valkey.svc:6379
+    - name: VALKEY_KEY_PREFIX
+      value: '${app}:${env}:'
+    copySecret:
+      from: valkey-users
+      keys:
+        default: password
+      name: ${app}-valkey
+    exportNote: Uses the shared Valkey (connectors/valkey, dev and staging only). Create Secret <app>-valkey (key
+      password) in the app namespace with the password of user default from Secret valkey/valkey-users.
 - id: appsmith
   name: Appsmith
   category: Developer
@@ -876,6 +1004,65 @@ connectors:
   license: Apache-2.0
   foundation: CNCF (incubating) / Apache Kafka
   homepage: https://strimzi.io
+  binding:
+    label: Kafka cluster
+    summary: Your own single-node Kafka (KRaft) in this environment, plain listener inside the cluster.
+    scope: instance
+    envs:
+    - dev
+    - staging
+    - prod
+    options:
+    - id: storage
+      label: Disk size
+      default: 5Gi
+      choices:
+      - 5Gi
+      - 10Gi
+      - 20Gi
+    manifests: bindings/strimzi.yaml
+    env:
+    - name: KAFKA_BOOTSTRAP_SERVERS
+      value: ${name}-kafka-bootstrap:9092
+    exportNote: Needs the Strimzi operator (connectors/strimzi). Single broker and replication factor 1; detaching
+      deletes the cluster and its data.
+    manifestsText: |
+      # Binding template for the "strimzi" connector: one app's own single-node KRaft Kafka cluster.
+      # Placeholders are replaced by the AIO platform (plain string substitution) before the text goes into the app's values.
+      # The app connects to ${name}-kafka-bootstrap:9092 (plain listener, in-cluster only). Topics: KafkaTopic resources
+      # labelled strimzi.io/cluster: ${name}, or auto-creation by the client.
+      apiVersion: kafka.strimzi.io/v1
+      kind: KafkaNodePool
+      metadata:
+        name: ${app}-kafka                 # pods are <cluster>-<pool>-<n>: keep the pool name short
+        labels: { strimzi.io/cluster: ${name} }
+      spec:
+        replicas: 1
+        roles: [controller, broker]
+        storage: { type: persistent-claim, size: ${opt.storage}, deleteClaim: true }
+        resources:
+          requests: { cpu: 100m, memory: 768Mi }
+          limits: { memory: 1Gi }
+      ---
+      apiVersion: kafka.strimzi.io/v1
+      kind: Kafka
+      metadata:
+        name: ${name}
+      spec:
+        kafka:
+          listeners:
+            - { name: plain, port: 9092, type: internal, tls: false }
+          config:
+            offsets.topic.replication.factor: 1
+            transaction.state.log.replication.factor: 1
+            transaction.state.log.min.isr: 1
+            default.replication.factor: 1
+            min.insync.replicas: 1
+        entityOperator:
+          topicOperator:
+            resources:
+              requests: { cpu: 20m, memory: 128Mi }
+              limits: { memory: 256Mi }
 - id: loki
   name: Grafana Loki
   category: Observability
@@ -937,6 +1124,101 @@ connectors:
   homepage: https://opensearch.org
   pinNote: Operator chart repo (opensearch-k8s-operator), not the plain opensearch chart. The rollback target 3.0.12
     runs operator image 3.0.0-beta (its chart appVersion); the charts are otherwise identical.
+  binding:
+    label: OpenSearch cluster
+    summary: Your own 1-node OpenSearch with the security plugin and TLS, admin password generated by the operator.
+    scope: instance
+    envs:
+    - dev
+    - staging
+    - prod
+    options:
+    - id: disk
+      label: Disk size
+      default: 5Gi
+      choices:
+      - 5Gi
+      - 10Gi
+      - 20Gi
+    manifests: bindings/opensearch.yaml
+    env:
+    - name: OPENSEARCH_URL
+      value: https://${name}.${namespace}.svc:9200
+    - name: OPENSEARCH_USERNAME
+      secret: ${name}-admin-password
+      key: username
+    - name: OPENSEARCH_PASSWORD
+      secret: ${name}-admin-password
+      key: password
+    - name: OPENSEARCH_CA_CERT
+      secret: ${name}-ca
+      key: ca.crt
+    exportNote: Needs the OpenSearch operator (connectors/opensearch) and cert-manager. The operator creates Secret
+      <app>-opensearch-admin-password (username, password) and cert-manager Secret <app>-opensearch-ca (ca.crt);
+      the app uses the admin user, so create a user per app for production. Detaching deletes the cluster.
+    manifestsText: |
+      # Binding template for the "opensearch" connector (OpenSearch operator): one app's own 1-node OpenSearch cluster,
+      # security plugin on, TLS from a per-cluster cert-manager CA. Placeholders are replaced by the AIO platform (plain
+      # string substitution) before the text goes into the app's values.
+      # No admin Secret is needed up front: without spec.security.config.adminCredentialsSecret the operator generates
+      # Secret ${name}-admin-password (keys username = admin, password = random) at first reconcile and uses it.
+      # Apps trust ca.crt from Secret ${name}-ca for https://${name}.${namespace}.svc:9200.
+      apiVersion: cert-manager.io/v1
+      kind: Issuer
+      metadata:
+        name: ${name}-selfsigned
+      spec:
+        selfSigned: {}
+      ---
+      apiVersion: cert-manager.io/v1
+      kind: Certificate
+      metadata:
+        name: ${name}-ca
+      spec:
+        isCA: true
+        commonName: ${name}-ca
+        secretName: ${name}-ca
+        duration: 87600h
+        privateKey: { algorithm: RSA, size: 2048 }
+        issuerRef: { name: ${name}-selfsigned, kind: Issuer }
+      ---
+      apiVersion: opensearch.org/v1
+      kind: OpenSearchCluster
+      metadata:
+        name: ${name}
+      spec:
+        general:
+          serviceName: ${name}
+          version: "3.9.0"
+          httpPort: 9200
+          setVMMaxMapCount: false
+          additionalConfig:
+            node.store.allow_mmap: "false"
+          podSecurityContext: { runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000, runAsNonRoot: true }
+          securityContext: { allowPrivilegeEscalation: false }
+        bootstrap:
+          resources:
+            requests: { cpu: 100m, memory: 768Mi }
+            limits: { memory: 768Mi }
+        nodePools:
+          - component: nodes
+            replicas: 1
+            diskSize: ${opt.disk}
+            roles: [cluster_manager, data]
+            resources:
+              requests: { cpu: 250m, memory: 1Gi }
+              limits: { memory: 1Gi }
+        security:
+          tls:
+            transport:
+              generate: true
+              perNode: true
+              caSecret: { name: ${name}-ca }
+            http:
+              generate: true
+              caSecret: { name: ${name}-ca }
+        dashboards:
+          enable: false
 - id: opentelemetry-collector
   name: OpenTelemetry Collector
   category: Observability
@@ -962,6 +1244,21 @@ connectors:
   license: Apache-2.0
   foundation: CNCF (incubating)
   homepage: https://opentelemetry.io
+  binding:
+    label: OpenTelemetry traces
+    summary: Sends your app's OpenTelemetry traces to the node's collector (on to Tempo), tagged with app and environment.
+    scope: config
+    env:
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: http://otel-collector.opentelemetry.svc:4318
+    - name: OTEL_EXPORTER_OTLP_PROTOCOL
+      value: http/protobuf
+    - name: OTEL_SERVICE_NAME
+      value: ${app}
+    - name: OTEL_RESOURCE_ATTRIBUTES
+      value: deployment.environment=${env}
+    exportNote: Needs an OpenTelemetry Collector at otel-collector.opentelemetry.svc:4318 (connectors/opentelemetry-collector,
+      with loki and tempo); change OTEL_EXPORTER_OTLP_ENDPOINT to use another one.
 - id: prometheus
   name: Prometheus + Grafana
   category: Observability
@@ -1091,6 +1388,30 @@ connectors:
   homepage: https://dapr.io
   pinNote: The Dapr Helm index rewrites every entry's created date when it is republished, so pin.py cannot judge
     age from it; 1.19.1 (2026-10-31) and 1.19.0 (2026-10-22) are dated from the GitHub releases of dapr/dapr.
+  binding:
+    label: Dapr sidecar
+    summary: Adds the Dapr sidecar to your app (app id = project name); declare Components in your namespace.
+    scope: config
+    options:
+    - id: port
+      label: App port
+      default: '8080'
+      choices:
+      - '80'
+      - '3000'
+      - '5000'
+      - '8000'
+      - '8080'
+      - '9090'
+    podAnnotations:
+      dapr.io/enabled: 'true'
+      dapr.io/app-id: ${app}
+      dapr.io/app-port: ${opt.port}
+      dapr.io/sidecar-cpu-request: 10m
+      dapr.io/sidecar-memory-request: 32Mi
+      dapr.io/sidecar-memory-limit: 128Mi
+    exportNote: Needs the Dapr control plane (connectors/dapr); the app talks to its sidecar on localhost:3500 (HTTP)
+      or 50001 (gRPC).
 - id: openkruise
   name: OpenKruise
   category: Platform
@@ -1548,6 +1869,16 @@ connectors:
     from Docker Hub. numHistoryShards is 16 and can never change after the first start. Schema and namespace jobs
     are Argo CD Sync hooks and idempotent; on a chart upgrade the schema job updates the schema while the servers
     roll.
+  binding:
+    label: Temporal workflows
+    summary: Connects your Temporal workers and clients to the shared Temporal, namespace default.
+    scope: config
+    env:
+    - name: TEMPORAL_ADDRESS
+      value: temporal-frontend.temporal.svc:7233
+    - name: TEMPORAL_NAMESPACE
+      value: default
+    exportNote: Needs Temporal at temporal-frontend.temporal.svc:7233 (connectors/temporal); no TLS or auth in-cluster.
 - id: vllm
   name: vLLM production stack
   category: AI

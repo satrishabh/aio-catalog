@@ -30,3 +30,18 @@ foundation: CNCF (graduated)
 homepage: https://dapr.io
 pinNote: The Dapr Helm index rewrites every entry's created date when it is republished, so pin.py cannot judge age
   from it; 1.19.1 (2026-10-31) and 1.19.0 (2026-10-22) are dated from the GitHub releases of dapr/dapr.
+binding:
+  label: Dapr sidecar
+  summary: Adds the Dapr sidecar to your app (app id = project name); declare Components in your namespace.
+  scope: config
+  options:
+  - { id: port, label: App port, default: '8080', choices: ['80', '3000', '5000', '8000', '8080', '9090'] }
+  podAnnotations:
+    dapr.io/enabled: 'true'
+    dapr.io/app-id: '${app}'
+    dapr.io/app-port: '${opt.port}'
+    dapr.io/sidecar-cpu-request: 10m
+    dapr.io/sidecar-memory-request: 32Mi
+    dapr.io/sidecar-memory-limit: 128Mi
+  exportNote: Needs the Dapr control plane (connectors/dapr); the app talks to its sidecar on localhost:3500 (HTTP) or
+    50001 (gRPC).

@@ -43,3 +43,17 @@ pinNote: Images docker.langfuse.com/langfuse/langfuse and langfuse-worker (the p
   aligned with the tags the pinned chart uses). The chart's ClickHouse (needs the alpha ClickHouse operator and a
   Keeper), PostgreSQL and SeaweedFS (renders new random SFTP passwords on every render) are not used. Rendering
   needs a Helm newer than 3.16 (the bundled SeaweedFS sub-chart uses fromToml even when unused; 3.19 verified).
+binding:
+  label: Langfuse tracing
+  summary: Sends LLM traces to the shared Langfuse (project AIO); its API keys are copied into your namespace.
+  scope: shared
+  env:
+  - { name: LANGFUSE_HOST, value: 'http://langfuse-web.langfuse.svc:3000' }
+  - { name: LANGFUSE_PUBLIC_KEY, secret: '${app}-langfuse', key: public-key }
+  - { name: LANGFUSE_SECRET_KEY, secret: '${app}-langfuse', key: secret-key }
+  copySecret:
+    from: langfuse-secrets
+    keys: { project-public-key: public-key, project-secret-key: secret-key }
+    name: '${app}-langfuse'
+  exportNote: Uses the shared Langfuse (connectors/langfuse). Create Secret <app>-langfuse (keys public-key, secret-key)
+    with project-public-key / project-secret-key from Secret langfuse/langfuse-secrets.

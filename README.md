@@ -8,6 +8,7 @@ AIO reads the built catalog from a tagged release of this repo and installs tool
 catalog/<category>/<id>.yaml     one entry per tool (core | managed | planned)
 values/<id>/values.yaml          Helm values (common), values-<cloud>.yaml, site-<site>.yaml overlays
 extras/                          plain manifests synced with a chart, or applied once by an admin
+bindings/<id>.yaml               manifest templates a project gets when it attaches a connector (binding)
 sso/                             Keycloak clients and the single sign-on setup
 dist/catalog.yaml                GENERATED: everything AIO reads
 deploy/connectors-project.yaml   GENERATED: the Argo CD guardrail project
@@ -38,6 +39,30 @@ python tools/gen_sso.py             # regenerate Keycloak client definitions
 ```
 
 Release: merge to `main`, tag `vYYYY.MM.N`, and move `CONNECTORS_REVISION` to the tag.
+
+## Bindings (Project → Services)
+
+An entry may have a `binding:` block: how a project uses the connector once an admin has switched it on. In AIO,
+Project → Services attaches it per environment and writes the result into that project's values files
+(`services:`), so the values file alone runs the app. Entries without a binding are not offered there. Schema and
+platform side: AIO `docs/architecture/PROJECT-SERVICES.md`.
+
+| `scope` | The app gets | Bindings |
+| --- | --- | --- |
+| `instance` | its own copy in its namespace from `manifests` (`bindings/<id>.yaml`, multi-document YAML) | cloudnative-pg, strimzi, opensearch |
+| `shared` | the connector's single service; `copySecret` copies one Secret into the app namespace | valkey (dev, staging), langfuse, milvus |
+| `config` | only `env` and/or `podAnnotations` | opentelemetry-collector, temporal, dapr |
+
+Placeholders, plain string substitution by the platform: `${app}` project name, `${env}`, `${namespace}` (the app
+namespace, today the same as the env), `${name}` = `${app}-<connector id>`, `${opt.<id>}` an option's value.
+Anything else in `${...}` is an error. App namespaces are shared by every project, so every object, Secret and copied
+Secret name contains `${name}` or `${app}`. Kubernetes expands `$(VAR)` in an env value from an env var defined
+before it (e.g. `REDIS_URL` from `VALKEY_PASSWORD`); the platform keeps the listed order.
+
+`validate.py` checks the block (scope, envs, options with string choices, env entries with `value` or
+`secret` + `key`, `copySecret` only with `shared`, known placeholders) and renders `manifests` with sample values
+(`shop`, `dev`, option defaults) into valid YAML whose documents each have apiVersion, kind and a `metadata.name`
+containing the app. `build.py` inlines the template as `binding.manifestsText` in `dist/catalog.yaml`.
 
 ## Scope and schedule
 
