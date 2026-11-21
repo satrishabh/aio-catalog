@@ -13,7 +13,9 @@ grafana:
         hosts: [grafana.tools.sarvaikam.com]
   envValueFrom:
     GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
-      secretKeyRef: { name: grafana-oidc, key: client-secret }
+      # optional: Grafana starts (health, datasources, dashboards, alerts) before the Keycloak client exists;
+      # sign-in works once the Secret is created (then restart Grafana). The login form stays off either way.
+      secretKeyRef: { name: grafana-oidc, key: client-secret, optional: true }
   grafana.ini:
     server:
       root_url: https://grafana.tools.sarvaikam.com
