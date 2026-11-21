@@ -58,6 +58,13 @@ grafana:
       searchNamespace: ALL
   persistence:
     enabled: false                 # dashboards come from the chart; nothing stateful worth a disk
+  # Grafana 13 uses ~250Mi once dashboards are provisioned; at a 256Mi limit it ran out of headroom during start-up
+  # and failed its health probe, restarting in a loop (2026-11-21).
   resources:
-    requests: { cpu: 50m, memory: 128Mi }
-    limits: { memory: 256Mi }
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 512Mi }
+  grafana.ini:
+    plugins:
+      # Grafana otherwise downloads several app plugins from grafana.com on every start. They time out from the
+      # cluster and slow start-up; none of them is needed for the bundled dashboards.
+      preinstall_disabled: true
