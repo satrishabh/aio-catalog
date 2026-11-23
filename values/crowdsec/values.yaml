@@ -10,6 +10,12 @@
 
 container_runtime: containerd   # AKS, EKS, GKE and OKE all use containerd
 
+# LAPI secrets from Secret crowdsec-lapi-shared (setup/crowdsec-secrets.sh, before Enable). Without it the chart
+# generates them on every render, and Argo CD restarted the Local API on every sync (revision 52 by 2026-11-24).
+secrets:
+  externalSecret:
+    name: crowdsec-lapi-shared
+
 agent:
   # Traefik access log lines from the AIO ingress (Traefik must run with access logs on: the edge-protection
   # overlay turns them on)
