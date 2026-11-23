@@ -50,7 +50,13 @@ prometheus-node-exporter:
     limits: { memory: 64Mi }
 
 grafana:
-  fullnameOverride: kps-grafana   # admin password: Secret kps-grafana, key admin-password (generated)
+  fullnameOverride: kps-grafana
+  # Admin login from Secret grafana-admin (setup/prometheus-secrets.sh, before Enable). Without it the chart generates
+  # a new password on every render, and Argo CD restarted Grafana on every sync.
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
   # Other connectors bring their own datasource as a ConfigMap labelled grafana_datasource=1 in their namespace
   # (loki, tempo: extras/<id>-datasource); disabling one removes its datasource again.
   sidecar:
