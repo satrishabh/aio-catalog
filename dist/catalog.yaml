@@ -1546,8 +1546,9 @@ connectors:
   - name: Local API
     url: http://crowdsec-service.crowdsec.svc:8080/health
     expect: up
-  accessHint: 'kubectl -n crowdsec exec deploy/crowdsec-lapi -- cscli decisions list (alerts list, metrics). Bans
-    at the ingress need the bouncer key Secret and the Traefik overlay: see extras/edge-protection/README.md'
+  accessHint: 'Run setup/crowdsec-secrets.sh (aio-catalog) before Enable. kubectl -n crowdsec exec deploy/crowdsec-lapi
+    -- cscli decisions list (alerts list, metrics). Bans at the ingress need the bouncer key Secret and the Traefik
+    overlay: see extras/edge-protection/README.md'
   license: MIT
   foundation: Independent (CrowdSec)
   homepage: https://www.crowdsec.net
